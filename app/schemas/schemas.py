@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
 from datetime import datetime
+
 
 # ─── Auth Schemas ───────────────────────────────
 
@@ -17,7 +18,8 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-# ─── File Schemas ───────────────────────────────
+
+# ─── File Schemas ────────────────────────────────
 
 class FileOut(BaseModel):
     id: str
@@ -32,4 +34,4 @@ class FileOut(BaseModel):
 class ShareFileRequest(BaseModel):
     file_id: str
     share_with_email: EmailStr
-    
+    expiry_hours: Optional[int] = None  # None = forever, 24 = 24 hours, 168 = 7 days
