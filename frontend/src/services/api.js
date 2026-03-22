@@ -31,3 +31,4 @@ export const getTrashFiles = () => API.get('/files/trash');
 export const starFile = (fileId) => API.patch(`/files/star/${fileId}`);
 export const restoreFile = (fileId) => API.patch(`/files/trash/restore/${fileId}`);
 export const permanentDelete = (fileId) => API.delete(`/files/trash/permanent/${fileId}`);
+export const removeSharedFile = (fileId) => API.patch(`/files/shared/remove/${fileId}`);

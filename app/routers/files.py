@@ -33,8 +33,8 @@ async def upload_file(
         "size": len(raw_bytes),
         "sha256_hash": sha256,
         "storage_path": filepath,
-        "shared_with": [],        # list of emails
-        "share_expiry": {},       # { email: expiry_datetime or None }
+        "shared_with": [],
+        "share_expiry_list": [],
         "trashed": False,
         "starred": False,
         "uploaded_at": datetime.utcnow(),
@@ -80,11 +80,26 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
     })
     files = []
     async for doc in cursor:
-        # Check expiry
-        expiry_map = doc.get("share_expiry", {})
-        expiry = expiry_map.get(email)
+        # Find expiry for this user from list
+        expiry = None
+        expiry_list = doc.get("share_expiry_list", [])
+        for item in expiry_list:
+            if item.get("email") == email:
+                expiry = item.get("expiry")
+                break
+
+        print(f"Expiry list: {expiry_list}")
+        print(f"Expiry found: {expiry}")
+
+        # Skip expired files
         if expiry and datetime.fromisoformat(expiry) < now:
-            continue  # skip expired files
+            continue
+
+        # Calculate hours remaining
+        hours_remaining = None
+        if expiry:
+            diff = datetime.fromisoformat(expiry) - datetime.utcnow()
+            hours_remaining = max(0, int(diff.total_seconds() / 3600))
 
         files.append({
             "id": str(doc["_id"]),
@@ -96,6 +111,7 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
             "uploaded_at": doc["uploaded_at"],
             "is_owner": False,
             "expiry": expiry,
+            "hours_remaining": hours_remaining,
         })
     return files
 
@@ -162,8 +178,12 @@ async def download_file(
 
     # Check expiry for shared users
     if not is_owner and is_shared:
-        expiry_map = doc.get("share_expiry", {})
-        expiry = expiry_map.get(email)
+        expiry = None
+        expiry_list = doc.get("share_expiry_list", [])
+        for item in expiry_list:
+            if item.get("email") == email:
+                expiry = item.get("expiry")
+                break
         if expiry and datetime.fromisoformat(expiry) < datetime.utcnow():
             raise HTTPException(
                 status_code=403,
@@ -205,11 +225,24 @@ async def share_file(
     if payload.expiry_hours:
         expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
 
+    print(f"Expiry calculated: {expiry}")
+    print(f"Email: {payload.share_with_email}")
+
+    # Remove existing expiry entry for this user if exists
+    await files_collection.update_one(
+        {"_id": ObjectId(payload.file_id)},
+        {"$pull": {"share_expiry_list": {"email": payload.share_with_email}}}
+    )
+
+    # Add new expiry entry
     await files_collection.update_one(
         {"_id": ObjectId(payload.file_id)},
         {
             "$addToSet": {"shared_with": payload.share_with_email},
-            "$set": {f"share_expiry.{payload.share_with_email}": expiry}
+            "$push": {"share_expiry_list": {
+                "email": payload.share_with_email,
+                "expiry": expiry
+            }}
         }
     )
 
@@ -298,3 +331,34 @@ async def restore_file(
         {"$set": {"trashed": False}}
     )
     return {"message": "File restored successfully"}
+
+@router.patch("/shared/remove/{file_id}")
+async def remove_shared_file(
+    file_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Allow shared user to remove file from their shared list."""
+    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    email = current_user["email"]
+
+    # Make sure they are actually a shared user not owner
+    if doc["owner_email"] == email:
+        raise HTTPException(status_code=403, detail="Owner cannot use this endpoint")
+
+    if email not in doc.get("shared_with", []):
+        raise HTTPException(status_code=403, detail="File not shared with you")
+
+    # Remove from shared_with list
+    await files_collection.update_one(
+        {"_id": ObjectId(file_id)},
+        {
+            "$pull": {
+                "shared_with": email,
+                "share_expiry_list": {"email": email}
+            }
+        }
+    )
+    return {"message": "File removed from your shared list"}

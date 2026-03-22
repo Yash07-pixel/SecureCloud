@@ -135,11 +135,12 @@ body {
   min-height: 100vh;
 }
 
+/* ── Sidebar ── */
 .sidebar {
-  width: 220px;
+  width: 240px;
   background: #ffffff;
   border-right: 1px solid #e0e0e0;
-  padding: 20px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -147,66 +148,106 @@ body {
 }
 
 .sidebar-logo {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: #1a1a2e;
-  padding: 0 20px 20px;
+  padding: 24px 24px;
   border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+
+.nav-section {
+  padding: 16px 24px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 .nav-item {
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 11px 24px;
+  font-size: 16px;
   color: #555;
   cursor: pointer;
-  border-radius: 0 20px 20px 0;
-  margin-right: 12px;
+  border-radius: 0 24px 24px 0;
+  margin-right: 16px;
   margin-bottom: 2px;
   transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.nav-item-active {
+  padding: 11px 24px;
+  font-size: 16px;
+  color: #1a73e8;
+  font-weight: 600;
+  background: #e8f0fe;
+  cursor: pointer;
+  border-radius: 0 24px 24px 0;
+  margin-right: 16px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .nav-item:hover {
   background: #f5f5f5;
+  color: #333;
 }
 
 .nav-item-active {
-  padding: 10px 20px;
+  padding: 10px 24px;
   font-size: 14px;
   color: #1a73e8;
   font-weight: 600;
   background: #e8f0fe;
   cursor: pointer;
-  border-radius: 0 20px 20px 0;
-  margin-right: 12px;
+  border-radius: 0 24px 24px 0;
+  margin-right: 16px;
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .sidebar-footer {
   margin-top: auto;
   border-top: 1px solid #f0f0f0;
-  padding-top: 8px;
+  padding: 8px 0;
 }
 
+/* ── Main ── */
 .main {
-  margin-left: 220px;
+  margin-left: 240px;
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 .topbar {
   background: #ffffff;
   border-bottom: 1px solid #e0e0e0;
-  padding: 16px 32px;
+  padding: 14px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .greeting {
-  font-size: 16px;
-  color: #333;
+  font-size: 26px;
+  color: #1a1a2e;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-transform: capitalize;
 }
 
 .upload-btn {
@@ -214,61 +255,59 @@ body {
   background: #1a73e8;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  letter-spacing: 0.2px;
 }
 
 .upload-btn:hover {
   background: #1557b0;
 }
 
+/* ── Content ── */
 .content {
-  padding: 32px;
+  padding: 28px 32px;
 }
 
 .section-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #1a1a2e;
   margin-bottom: 16px;
 }
 
-.empty {
-  text-align: center;
-  color: #888;
-  margin-top: 60px;
-  font-size: 14px;
-}
-
+/* ── File Table ── */
 .file-table {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid #ebebeb;
 }
 
 .file-table th {
-  padding: 12px 16px;
+  padding: 11px 16px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #888;
+  color: #999;
   background: #fafafa;
   border-bottom: 1px solid #eee;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
 .file-table td {
   padding: 13px 16px;
-  font-size: 14px;
+  font-size: 13px;
   color: #333;
   border-bottom: 1px solid #f5f5f5;
+  vertical-align: middle;
 }
 
 .file-table tr:last-child td {
@@ -279,26 +318,42 @@ body {
   background: #fafafa;
 }
 
+/* ── Action Buttons ── */
 .action-btn {
-  background: none;
+  background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  padding: 5px 10px;
+  padding: 7px 14px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   margin-right: 6px;
-  color: #555;
+  color: #444;
   transition: all 0.15s;
+  font-weight: 500;
+  letter-spacing: 0.1px;
 }
 
 .action-btn:hover {
-  background: #f0f0f0;
+  background: #f5f5f5;
+  border-color: #ccc;
+  color: #111;
 }
 
 .action-btn-danger {
-  color: #d93025;
+  color: #d93025 !important;
+  border-color: #fad2cf !important;
 }
 
+.action-btn-danger:hover {
+  background: #fce8e6 !important;
+}
+/* ── Global Font ── */
+body {
+  background: #f0f2f5;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+}
 /* ── Modal ── */
 .modal-bg {
   position: fixed;

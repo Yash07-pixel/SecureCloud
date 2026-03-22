@@ -24,7 +24,7 @@ function Dashboard() {
       return;
     }
     const payload = JSON.parse(atob(token.split('.')[1]));
-    setUsername(payload.sub.split('@')[0]);
+    setUsername(payload.name || payload.sub.split('@')[0]);
     fetchFiles();
   }, []);
 
@@ -95,17 +95,22 @@ function Dashboard() {
   };
 
   const handleShare = async () => {
+    console.log('Sharing with expiry hours:', shareExpiry);
+    console.log('Expiry type:', typeof shareExpiry);
     try {
-      await shareFile({
+      const payload = {
         file_id: shareFileId,
         share_with_email: shareEmail,
         expiry_hours: shareExpiry ? parseInt(shareExpiry) : null
-      });
+      };
+      console.log('Sending payload:', payload);
+      await shareFile(payload);
       alert('File shared successfully!');
       setShowShareModal(false);
       setShareEmail('');
       setShareExpiry('');
     } catch (err) {
+      console.log('Share error:', err);
       alert('Share failed. Make sure the user is registered.');
     }
   };
@@ -135,23 +140,35 @@ function Dashboard() {
 
       {/* Sidebar */}
       <div className="sidebar">
-        <div className="sidebar-logo">🔐 SecureCloud</div>
-        <div className="nav-item" onClick={() => document.getElementById('fileInput').click()}>
-          ⬆ Upload File
+        <div className="sidebar-logo">SecureCloud</div>
+
+        <div style={{padding: '12px 0'}}>
+          <div className="nav-item" onClick={() => document.getElementById('fileInput').click()}>
+            <span>↑</span> Upload File
+          </div>
+          <input
+            id="fileInput"
+            type="file"
+            style={{ display: 'none' }}
+            onChange={handleUpload}
+          />
+          <div className="nav-item-active">
+            <span>▦</span> My Files
+          </div>
+          <div className="nav-item" onClick={() => navigate('/shared')}>
+            <span>⇄</span> Shared with Me
+          </div>
+          <div className="nav-item" onClick={() => navigate('/starred')}>
+            <span>☆</span> Starred
+          </div>
+          <div className="nav-item" onClick={() => navigate('/trash')}>
+            <span>⊘</span> Trash
+          </div>
         </div>
-        <input
-          id="fileInput"
-          type="file"
-          style={{ display: 'none' }}
-          onChange={handleUpload}
-        />
-        <div className="nav-item-active">📁 My Files</div>
-        <div className="nav-item" onClick={() => navigate('/shared')}>🔗 Shared with Me</div>
-        <div className="nav-item" onClick={() => navigate('/starred')}>⭐ Starred</div>
-        <div className="nav-item" onClick={() => navigate('/trash')}>🗑 Trash</div>
+
         <div className="sidebar-footer">
           <div className="nav-item" onClick={handleLogout}>
-            🚪 Logout
+            <span>→</span> Logout
           </div>
         </div>
       </div>
@@ -162,7 +179,7 @@ function Dashboard() {
         {/* Topbar */}
         <div className="topbar">
           <div className="greeting">
-            Hi, <strong>{username}</strong> 👋
+            Hi, <strong>{username}</strong> 
           </div>
           <button
             className="upload-btn"
@@ -221,36 +238,35 @@ function Dashboard() {
                         # {file.sha256_hash.substring(0, 12)}...
                       </span>
                     </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDownload(file.id, file.original_name)}
-                      >
-                        ⬇
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleStar(file.id)}
-                        title={file.starred ? 'Unstar' : 'Star'}
-                      >
-                        {file.starred ? '★' : '☆'}
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => {
-                          setShareFileId(file.id);
-                          setShowShareModal(true);
-                        }}
-                      >
-                        🔗
-                      </button>
-                      <button
-                        className="action-btn action-btn-danger"
-                        onClick={() => handleDelete(file.id)}
-                      >
-                        🗑
-                      </button>
-                    </td>
+                  <td>
+                    <button
+                      className="action-btn"
+                      onClick={() => handleDownload(file.id, file.original_name)}
+                    >
+                      Download
+                    </button>
+                    <button
+                      className="action-btn"
+                      onClick={() => handleStar(file.id)}
+                    >
+                      {file.starred ? 'Unstar' : 'Star'}
+                    </button>
+                    <button
+                      className="action-btn"
+                      onClick={() => {
+                        setShareFileId(file.id);
+                        setShowShareModal(true);
+                      }}
+                    >
+                      Share
+                    </button>
+                    <button
+                      className="action-btn action-btn-danger"
+                      onClick={() => handleDelete(file.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
                   </tr>
                 ))}
               </tbody>

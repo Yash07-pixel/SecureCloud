@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getStarredFiles, downloadFile, starFile } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles.css';
 
 function Starred() {
   const [files, setFiles] = useState([]);
   const navigate = useNavigate();
-
+  const location = useLocation();
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -57,25 +57,38 @@ function Starred() {
 
   return (
     <div className="dashboard-container">
+
+      {/* Sidebar */}
       <div className="sidebar">
-        <div className="sidebar-logo">🔐 SecureCloud</div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')}>📁 My Files</div>
-        <div className="nav-item" onClick={() => navigate('/shared')}>🔗 Shared with Me</div>
-        <div className="nav-item-active">⭐ Starred</div>
-        <div className="nav-item" onClick={() => navigate('/trash')}>🗑 Trash</div>
+        <div className="sidebar-logo">SecureCloud</div>
+        <div style={{padding: '12px 0'}}>
+          <div className="nav-item" onClick={() => navigate('/dashboard')}>
+            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>▦</span> My Files
+          </div>
+          <div className={location.pathname === '/shared' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/shared')}>
+            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⇄</span> Shared with Me
+          </div>
+          <div className={location.pathname === '/starred' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/starred')}>
+            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>☆</span> Starred
+          </div>
+          <div className={location.pathname === '/trash' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/trash')}>
+            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⊘</span> Trash
+          </div>
+        </div>
         <div className="sidebar-footer">
           <div className="nav-item" onClick={() => {
             localStorage.removeItem('token');
             navigate('/login');
           }}>
-            🚪 Logout
+            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>→</span> Logout
           </div>
         </div>
       </div>
 
+      {/* Main */}
       <div className="main">
         <div className="topbar">
-          <div className="greeting">⭐ Starred Files</div>
+          <div className="greeting">Starred Files</div>
         </div>
 
         <div className="content">
@@ -108,13 +121,13 @@ function Starred() {
                         className="action-btn"
                         onClick={() => handleDownload(file.id, file.original_name)}
                       >
-                        ⬇ Download
+                        Download
                       </button>
                       <button
                         className="action-btn"
                         onClick={() => handleUnstar(file.id)}
                       >
-                        ★ Unstar
+                        Unstar
                       </button>
                     </td>
                   </tr>
