@@ -32,6 +32,7 @@ function Dashboard() {
     try {
       const res = await listFiles();
       setFiles(res.data);
+      return res.data;
     } catch (err) {
       console.error(err);
     }
@@ -95,22 +96,26 @@ function Dashboard() {
   };
 
   const handleShare = async () => {
-    console.log('Sharing with expiry hours:', shareExpiry);
-    console.log('Expiry type:', typeof shareExpiry);
     try {
       const payload = {
         file_id: shareFileId,
         share_with_email: shareEmail,
         expiry_hours: shareExpiry ? parseInt(shareExpiry) : null
       };
-      console.log('Sending payload:', payload);
       await shareFile(payload);
       alert('File shared successfully!');
       setShowShareModal(false);
+
+      // Refresh files and update selectedFile with new shared_with
+      const updatedFiles = await fetchFiles();
+      if (updatedFiles && selectedFile) {
+        const updated = updatedFiles.find(f => f.id === selectedFile.id);
+        if (updated) setSelectedFile(updated);
+      }
+
       setShareEmail('');
       setShareExpiry('');
     } catch (err) {
-      console.log('Share error:', err);
       alert('Share failed. Make sure the user is registered.');
     }
   };
@@ -179,7 +184,7 @@ function Dashboard() {
         {/* Topbar */}
         <div className="topbar">
           <div className="greeting">
-            Hi, <strong>{username}</strong> 
+            Hi, <strong>{username}</strong>
           </div>
           <button
             className="upload-btn"
@@ -238,35 +243,36 @@ function Dashboard() {
                         # {file.sha256_hash.substring(0, 12)}...
                       </span>
                     </td>
-                  <td>
-                    <button
-                      className="action-btn"
-                      onClick={() => handleDownload(file.id, file.original_name)}
-                    >
-                      Download
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => handleStar(file.id)}
-                    >
-                      {file.starred ? 'Unstar' : 'Star'}
-                    </button>
-                    <button
-                      className="action-btn"
-                      onClick={() => {
-                        setShareFileId(file.id);
-                        setShowShareModal(true);
-                      }}
-                    >
-                      Share
-                    </button>
-                    <button
-                      className="action-btn action-btn-danger"
-                      onClick={() => handleDelete(file.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+                    <td>
+                      <button
+                        className="action-btn"
+                        onClick={() => handleDownload(file.id, file.original_name)}
+                      >
+                        Download
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={() => handleStar(file.id)}
+                      >
+                        {file.starred ? 'Unstar' : 'Star'}
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={() => {
+                          setShareFileId(file.id);
+                          setSelectedFile(file);
+                          setShowShareModal(true);
+                        }}
+                      >
+                        Share
+                      </button>
+                      <button
+                        className="action-btn action-btn-danger"
+                        onClick={() => handleDelete(file.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -373,9 +379,9 @@ function Dashboard() {
             <div className="details-row">
               <div className="details-label">Shared With</div>
               <div className="details-value">
-                {selectedFile.shared_with.length === 0
+                {selectedFile.shared_with && selectedFile.shared_with.length === 0
                   ? 'Nobody — Private 🔐'
-                  : selectedFile.shared_with.join(', ')}
+                  : selectedFile.shared_with && selectedFile.shared_with.join(', ')}
               </div>
             </div>
 
