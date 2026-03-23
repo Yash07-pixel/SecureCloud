@@ -1,7 +1,5 @@
 import random
-import aiosmtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 
 
 def generate_otp() -> str:
@@ -10,6 +8,8 @@ def generate_otp() -> str:
 
 async def send_otp_email(to_email: str, otp: str):
     from app.core.config import settings
+
+    resend.api_key = "re_fC9QJ4sm_DyPMWvsTBgu3fGYkmfYeBQRa"
 
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
@@ -27,17 +27,11 @@ async def send_otp_email(to_email: str, otp: str):
     </div>
     """
 
-    message = MIMEMultipart("alternative")
-    message["Subject"] = "SecureCloud — Your Verification OTP"
-    message["From"] = settings.EMAIL_FROM
-    message["To"] = to_email
-    message.attach(MIMEText(html, "html"))
+    params: resend.Emails.SendParams = {
+        "from": "SecureCloud <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": "SecureCloud — Your Verification OTP",
+        "html": html,
+    }
 
-    await aiosmtplib.send(
-        message,
-        hostname=settings.SMTP_HOST,
-        port=465,
-        username=settings.SMTP_USER,
-        password=settings.SMTP_PASSWORD,
-        use_tls=True,
-    )
+    resend.Emails.send(params)

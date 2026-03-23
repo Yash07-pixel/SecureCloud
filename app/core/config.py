@@ -9,12 +9,6 @@ class Settings(BaseSettings):
     AES_SECRET_KEY: str
     UPLOAD_DIR: str = "encrypted_files"
 
-    # Email
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    EMAIL_FROM: str = ""
 
     class Config:
         env_file = ".env"
