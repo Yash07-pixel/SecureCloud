@@ -1,28 +1,37 @@
 import uuid
 from datetime import datetime, timedelta
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from fastapi.responses import Response
 from bson import ObjectId
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from app.core.security import get_current_user
 from app.core.database import files_collection, users_collection
 from app.schemas.schemas import ShareFileRequest
+from app.utils.validation import validate_file
 from app.utils.encryption import (
     encrypt_file, decrypt_file,
     compute_sha256,
     save_encrypted_file, load_encrypted_file,
 )
 
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/files", tags=["Files"])
 
 
 @router.post("/upload", status_code=201)
+@limiter.limit("10/minute")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    raw_bytes = await file.read()
+    raw_bytes = await validate_file(file)
     sha256 = compute_sha256(raw_bytes)
-    encrypted_data, iv = encrypt_file(raw_bytes)
+    user_doc = await users_collection.find_one({"email": current_user["email"]})
+    user_key = user_doc.get("encryption_key")
+    encrypted_data, iv = encrypt_file(raw_bytes, hex_key=user_key)
     stored_filename = f"{uuid.uuid4().hex}_{file.filename}"
     filepath = save_encrypted_file(stored_filename, encrypted_data, iv)
 
@@ -80,7 +89,6 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
     })
     files = []
     async for doc in cursor:
-        # Find expiry for this user from list
         expiry = None
         expiry_list = doc.get("share_expiry_list", [])
         for item in expiry_list:
@@ -91,11 +99,9 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
         print(f"Expiry list: {expiry_list}")
         print(f"Expiry found: {expiry}")
 
-        # Skip expired files
         if expiry and datetime.fromisoformat(expiry) < now:
             continue
 
-        # Calculate hours remaining
         hours_remaining = None
         if expiry:
             diff = datetime.fromisoformat(expiry) - datetime.utcnow()
@@ -176,7 +182,6 @@ async def download_file(
     if not is_owner and not is_shared:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Check expiry for shared users
     if not is_owner and is_shared:
         expiry = None
         expiry_list = doc.get("share_expiry_list", [])
@@ -185,13 +190,12 @@ async def download_file(
                 expiry = item.get("expiry")
                 break
         if expiry and datetime.fromisoformat(expiry) < datetime.utcnow():
-            raise HTTPException(
-                status_code=403,
-                detail="Your access to this file has expired"
-            )
+            raise HTTPException(status_code=403, detail="Your access to this file has expired")
 
     encrypted_data, iv = load_encrypted_file(doc["storage_path"])
-    original_bytes = decrypt_file(encrypted_data, iv)
+    owner_doc = await users_collection.find_one({"email": doc["owner_email"]})
+    owner_key = owner_doc.get("encryption_key")
+    original_bytes = decrypt_file(encrypted_data, iv, hex_key=owner_key)
 
     computed_hash = compute_sha256(original_bytes)
     if computed_hash != doc["sha256_hash"]:
@@ -220,7 +224,6 @@ async def share_file(
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
 
-    # Calculate expiry
     expiry = None
     if payload.expiry_hours:
         expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
@@ -228,13 +231,11 @@ async def share_file(
     print(f"Expiry calculated: {expiry}")
     print(f"Email: {payload.share_with_email}")
 
-    # Remove existing expiry entry for this user if exists
     await files_collection.update_one(
         {"_id": ObjectId(payload.file_id)},
         {"$pull": {"share_expiry_list": {"email": payload.share_with_email}}}
     )
 
-    # Add new expiry entry
     await files_collection.update_one(
         {"_id": ObjectId(payload.file_id)},
         {
@@ -332,26 +333,24 @@ async def restore_file(
     )
     return {"message": "File restored successfully"}
 
+
 @router.patch("/shared/remove/{file_id}")
 async def remove_shared_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Allow shared user to remove file from their shared list."""
     doc = await files_collection.find_one({"_id": ObjectId(file_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
     email = current_user["email"]
 
-    # Make sure they are actually a shared user not owner
     if doc["owner_email"] == email:
         raise HTTPException(status_code=403, detail="Owner cannot use this endpoint")
 
     if email not in doc.get("shared_with", []):
         raise HTTPException(status_code=403, detail="File not shared with you")
 
-    # Remove from shared_with list
     await files_collection.update_one(
         {"_id": ObjectId(file_id)},
         {
