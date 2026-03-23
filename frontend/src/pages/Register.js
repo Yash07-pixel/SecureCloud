@@ -16,8 +16,8 @@ function Register() {
     setError('');
     try {
       await registerUser({ name, email, password });
-      setSuccess('OTP sent to your email! Redirecting...');
-      setTimeout(() => navigate('/verify-otp', { state: { email } }), 1500);
+      setSuccess('Account created! Redirecting to login...');
+      setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
       setError(err.response?.data?.detail || 'Email already registered or something went wrong');
     }
