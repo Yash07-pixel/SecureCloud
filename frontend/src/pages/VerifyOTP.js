@@ -3,8 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../styles.css";
 
-const API = axios.create({ baseURL: "http://localhost:8000" });
-
+const API = axios.create({ baseURL: "https://securecloud-341u.onrender.com" });
 export default function VerifyOTP() {
   const location = useLocation();
   const navigate = useNavigate();
