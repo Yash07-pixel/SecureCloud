@@ -180,9 +180,21 @@ function Dashboard() {
     return parts.length > 1 ? parts.pop().toUpperCase() : 'FILE';
   };
 
+  const parseApiDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value !== 'string') return new Date(value);
+
+    const normalizedValue =
+      /[zZ]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`;
+    const parsed = new Date(normalizedValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const formatDate = (value) => {
-    if (!value) return 'Unknown';
-    return new Date(value).toLocaleString([], {
+    const date = parseApiDate(value);
+    if (!date) return 'Unknown';
+    return date.toLocaleString([], {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -192,8 +204,8 @@ function Dashboard() {
   };
 
   const formatRelativeTime = (value) => {
-    if (!value) return 'Unknown';
-    const date = new Date(value);
+    const date = parseApiDate(value);
+    if (!date) return 'Unknown';
     const diffMs = Date.now() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 1) return 'Just now';
@@ -210,7 +222,7 @@ function Dashboard() {
       if (sortBy === 'name-desc') return b.original_name.localeCompare(a.original_name);
       if (sortBy === 'size-desc') return b.size - a.size;
       if (sortBy === 'size-asc') return a.size - b.size;
-      return new Date(b.uploaded_at || 0) - new Date(a.uploaded_at || 0);
+      return (parseApiDate(b.uploaded_at)?.getTime() || 0) - (parseApiDate(a.uploaded_at)?.getTime() || 0);
     });
 
   return (

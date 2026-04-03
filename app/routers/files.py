@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from fastapi.responses import Response
 from bson import ObjectId
@@ -28,6 +28,17 @@ def parse_file_id(file_id: str) -> ObjectId:
         raise HTTPException(status_code=400, detail="Invalid file ID")
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def parse_utc_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 @router.post("/upload", status_code=201)
 @limiter.limit("10/minute")
 async def upload_file(
@@ -54,7 +65,7 @@ async def upload_file(
         "share_expiry_list": [],
         "trashed": False,
         "starred": False,
-        "uploaded_at": datetime.utcnow(),
+        "uploaded_at": utc_now(),
     }
     result = await files_collection.insert_one(doc)
     return {
@@ -90,7 +101,7 @@ async def list_files(current_user: dict = Depends(get_current_user)):
 @router.get("/shared")
 async def shared_with_me(current_user: dict = Depends(get_current_user)):
     email = current_user["email"]
-    now = datetime.utcnow()
+    now = utc_now()
     cursor = files_collection.find({
         "shared_with": email,
         "trashed": {"$ne": True}
@@ -104,12 +115,12 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
                 expiry = item.get("expiry")
                 break
 
-        if expiry and datetime.fromisoformat(expiry) < now:
+        if expiry and parse_utc_datetime(expiry) < now:
             continue
 
         hours_remaining = None
         if expiry:
-            diff = datetime.fromisoformat(expiry) - datetime.utcnow()
+            diff = parse_utc_datetime(expiry) - utc_now()
             hours_remaining = max(0, int(diff.total_seconds() / 3600))
 
         files.append({
@@ -195,7 +206,7 @@ async def download_file(
             if item.get("email") == email:
                 expiry = item.get("expiry")
                 break
-        if expiry and datetime.fromisoformat(expiry) < datetime.utcnow():
+        if expiry and parse_utc_datetime(expiry) < utc_now():
             raise HTTPException(status_code=403, detail="Your access to this file has expired")
 
     encrypted_data, iv = load_encrypted_file(doc["storage_path"])
@@ -234,7 +245,7 @@ async def share_file(
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
 
-    expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
+    expiry = (utc_now() + timedelta(hours=payload.expiry_hours)).isoformat()
 
     await files_collection.update_one(
         {"_id": object_id},
