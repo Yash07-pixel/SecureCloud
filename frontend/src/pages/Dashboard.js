@@ -23,8 +23,14 @@ function Dashboard() {
       navigate('/login');
       return;
     }
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    setUsername(payload.name || payload.sub.split('@')[0]);
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUsername(payload.name || payload.sub.split('@')[0]);
+    } catch (err) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return;
+    }
     fetchFiles();
   }, []);
 

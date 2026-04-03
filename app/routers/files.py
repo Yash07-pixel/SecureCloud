@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from fastapi.responses import Response
 from bson import ObjectId
+from bson.errors import InvalidId
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.core.security import get_current_user
@@ -18,6 +19,13 @@ from app.utils.encryption import (
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/files", tags=["Files"])
+
+
+def parse_file_id(file_id: str) -> ObjectId:
+    try:
+        return ObjectId(file_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid file ID")
 
 
 @router.post("/upload", status_code=201)
@@ -96,9 +104,6 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
                 expiry = item.get("expiry")
                 break
 
-        print(f"Expiry list: {expiry_list}")
-        print(f"Expiry found: {expiry}")
-
         if expiry and datetime.fromisoformat(expiry) < now:
             continue
 
@@ -171,7 +176,8 @@ async def download_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -213,7 +219,8 @@ async def share_file(
     payload: ShareFileRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(payload.file_id)})
+    object_id = parse_file_id(payload.file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -228,16 +235,13 @@ async def share_file(
     if payload.expiry_hours:
         expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
 
-    print(f"Expiry calculated: {expiry}")
-    print(f"Email: {payload.share_with_email}")
-
     await files_collection.update_one(
-        {"_id": ObjectId(payload.file_id)},
+        {"_id": object_id},
         {"$pull": {"share_expiry_list": {"email": payload.share_with_email}}}
     )
 
     await files_collection.update_one(
-        {"_id": ObjectId(payload.file_id)},
+        {"_id": object_id},
         {
             "$addToSet": {"shared_with": payload.share_with_email},
             "$push": {"share_expiry_list": {
@@ -261,7 +265,8 @@ async def star_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -270,7 +275,7 @@ async def star_file(
 
     new_starred = not doc.get("starred", False)
     await files_collection.update_one(
-        {"_id": ObjectId(file_id)},
+        {"_id": object_id},
         {"$set": {"starred": new_starred}}
     )
     return {"starred": new_starred}
@@ -281,7 +286,8 @@ async def delete_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -289,7 +295,7 @@ async def delete_file(
         raise HTTPException(status_code=403, detail="Only the owner can delete this file")
 
     await files_collection.update_one(
-        {"_id": ObjectId(file_id)},
+        {"_id": object_id},
         {"$set": {"trashed": True}}
     )
     return {"message": "File moved to trash"}
@@ -301,7 +307,8 @@ async def permanent_delete(
     current_user: dict = Depends(get_current_user)
 ):
     import os
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -311,7 +318,7 @@ async def permanent_delete(
     if os.path.exists(doc["storage_path"]):
         os.remove(doc["storage_path"])
 
-    await files_collection.delete_one({"_id": ObjectId(file_id)})
+    await files_collection.delete_one({"_id": object_id})
     return {"message": "File permanently deleted"}
 
 
@@ -320,7 +327,8 @@ async def restore_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -328,7 +336,7 @@ async def restore_file(
         raise HTTPException(status_code=403, detail="Only the owner can restore this file")
 
     await files_collection.update_one(
-        {"_id": ObjectId(file_id)},
+        {"_id": object_id},
         {"$set": {"trashed": False}}
     )
     return {"message": "File restored successfully"}
@@ -339,7 +347,8 @@ async def remove_shared_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    object_id = parse_file_id(file_id)
+    doc = await files_collection.find_one({"_id": object_id})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
 
@@ -352,7 +361,7 @@ async def remove_shared_file(
         raise HTTPException(status_code=403, detail="File not shared with you")
 
     await files_collection.update_one(
-        {"_id": ObjectId(file_id)},
+        {"_id": object_id},
         {
             "$pull": {
                 "shared_with": email,

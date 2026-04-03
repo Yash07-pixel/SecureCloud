@@ -13,6 +13,13 @@ function Starred() {
       navigate('/login');
       return;
     }
+    try {
+      JSON.parse(atob(token.split('.')[1]));
+    } catch (err) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return;
+    }
     fetchStarredFiles();
   }, []);
 

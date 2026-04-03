@@ -13,6 +13,13 @@ function Trash() {
       navigate('/login');
       return;
     }
+    try {
+      JSON.parse(atob(token.split('.')[1]));
+    } catch (err) {
+      localStorage.removeItem('token');
+      navigate('/login');
+      return;
+    }
     fetchTrashFiles();
   }, []);
 
@@ -98,7 +105,7 @@ function Trash() {
               color: '#d93025',
               fontWeight: '500'
             }}>
-              Files in trash will be permanently deleted after 30 days.
+              Files stay in trash until you restore them or delete them permanently.
             </div>
           )}
 
