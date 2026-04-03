@@ -1028,6 +1028,18 @@ body {
   background: var(--surface-hover);
 }
 
+.action-btn:hover,
+.action-btn:focus-visible {
+  color: var(--text-main) !important;
+  border-color: var(--border-strong);
+}
+
+.action-btn-danger:hover,
+.action-btn-danger:focus-visible {
+  color: var(--danger-theme) !important;
+  border-color: color-mix(in srgb, var(--danger-theme) 40%, var(--border-soft)) !important;
+}
+
 .action-btn:disabled,
 .upload-btn:disabled,
 .share-btn:disabled,
@@ -1096,6 +1108,18 @@ body {
 
 [data-theme='dark'] .auth-feature-item {
   background: rgba(18, 26, 42, 0.62);
+}
+
+[data-theme='dark'] .action-btn:hover,
+[data-theme='dark'] .action-btn:focus-visible {
+  background: #20324b;
+  color: #f5f9ff !important;
+}
+
+[data-theme='dark'] .action-btn-danger:hover,
+[data-theme='dark'] .action-btn-danger:focus-visible {
+  background: rgba(255, 140, 132, 0.14) !important;
+  color: #ff9a93 !important;
 }
 
 .toast-success {
