@@ -1,0 +1,43 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cloudA" x1="90" y1="126" x2="423" y2="386" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4DD2FF"/>
+      <stop offset="0.45" stop-color="#2E89F3"/>
+      <stop offset="1" stop-color="#102E78"/>
+    </linearGradient>
+    <linearGradient id="cloudB" x1="157" y1="179" x2="356" y2="336" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE3FF"/>
+      <stop offset="0.55" stop-color="#3A8BFF"/>
+      <stop offset="1" stop-color="#1A3D9D"/>
+    </linearGradient>
+    <linearGradient id="shieldA" x1="256" y1="158" x2="256" y2="402" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14377F"/>
+      <stop offset="0.6" stop-color="#12306D"/>
+      <stop offset="1" stop-color="#0B1E52"/>
+    </linearGradient>
+    <linearGradient id="shieldB" x1="256" y1="177" x2="256" y2="377" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#59CBFF"/>
+      <stop offset="0.6" stop-color="#2F8EFF"/>
+      <stop offset="1" stop-color="#1B5AC5"/>
+    </linearGradient>
+    <filter id="shadow" x="70" y="103" width="372" height="333" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="15"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0509804 0 0 0 0 0.14902 0 0 0 0 0.403922 0 0 0 0.22 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <path d="M148 346C111.549 346 82 316.451 82 280C82 248.601 103.861 222.307 133.256 215.503C144.428 171.577 183.777 139 230.5 139C255.244 139 277.914 148.143 295.264 163.242C307.886 153.651 323.63 148 340.694 148C381.883 148 415.942 180.433 419.989 220.605C442.118 231.82 457 254.805 457 281.273C457 322.541 423.541 356 382.273 356H148V346Z" fill="url(#cloudA)"/>
+    <path d="M147 335C117.177 335 93 310.823 93 281C93 255.954 110.059 234.893 133.162 228.79L142.261 226.385L144.603 217.275C154.455 178.954 189.104 151 230.5 151C251.645 151 271.052 158.314 286.37 170.572L293.836 176.547L301.424 170.727C312.021 162.602 325.474 158 340.694 158C376.973 158 406.844 186.586 410.033 222.794L410.681 230.155L417.262 233.491C436.173 243.079 449 262.624 449 283.273C449 318.019 420.291 346 385.545 346H147V335Z" stroke="white" stroke-width="12"/>
+    <path d="M256 161L327 196V279C327 335.232 285.969 378.857 256 393C226.031 378.857 185 335.232 185 279V196L256 161Z" fill="url(#shieldA)"/>
+    <path d="M256 181L309 207V278C309 321.712 278.038 355.395 256 366.877C233.962 355.395 203 321.712 203 278V207L256 181Z" fill="url(#shieldB)"/>
+    <path d="M256 181L309 207V278C309 321.712 278.038 355.395 256 366.877C233.962 355.395 203 321.712 203 278V207L256 181Z" stroke="#DDF3FF" stroke-width="8"/>
+    <rect x="221" y="245" width="70" height="58" rx="11" fill="white"/>
+    <path d="M237 245V228C237 212.536 249.536 200 265 200C280.464 200 293 212.536 293 228V245H281V228C281 219.163 273.837 212 265 212C256.163 212 249 219.163 249 228V245H237Z" fill="white"/>
+    <path d="M265 257C257.82 257 252 262.82 252 270C252 274.782 254.581 278.963 258.419 281.21V290C258.419 293.59 261.33 296.5 264.919 296.5H265.081C268.67 296.5 271.581 293.59 271.581 290V281.21C275.419 278.963 278 274.782 278 270C278 262.82 272.18 257 265 257Z" fill="#183B86"/>
+  </g>
+</svg>

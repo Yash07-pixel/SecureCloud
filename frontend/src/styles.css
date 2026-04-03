@@ -263,6 +263,15 @@ body {
   border-radius: 28px;
 }
 
+.auth-logo-image {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 18px;
+  object-fit: contain;
+  filter: drop-shadow(0 16px 28px rgba(33, 99, 210, 0.18));
+}
+
 .auth-brand-mark-center {
   margin: 0 auto 20px;
 }
@@ -305,6 +314,22 @@ body {
   padding: 24px 24px;
   border-bottom: 1px solid #f0f0f0;
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sidebar-logo-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-logo-mark {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .nav-section {

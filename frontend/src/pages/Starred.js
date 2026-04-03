@@ -95,8 +95,11 @@ function Starred() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <span className="sidebar-kicker">Encrypted Workspace</span>
-          <span>SecureCloud</span>
+          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
+          <div className="sidebar-logo-copy">
+            <span className="sidebar-kicker">Encrypted Workspace</span>
+            <span>SecureCloud</span>
+          </div>
         </div>
         <div className="sidebar-nav">
           <div className="nav-item" onClick={() => navigate('/dashboard')}>

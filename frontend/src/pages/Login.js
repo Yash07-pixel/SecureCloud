@@ -24,9 +24,7 @@ function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card auth-card-single">
-        <div className="auth-brand-mark auth-brand-mark-center" aria-hidden="true">
-          <span className="auth-brand-core">SC</span>
-        </div>
+        <img className="auth-logo-image" src="/logo-mark.svg" alt="SecureCloud logo" />
         <h1 className="auth-title auth-title-center">SecureCloud</h1>
         <p className="auth-tagline auth-tagline-center">Sign in to your secure workspace.</p>
 
