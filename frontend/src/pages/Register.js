@@ -7,6 +7,7 @@ function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card auth-card-single">
-        <img className="auth-logo-image" src="/logo-mark.svg" alt="SecureCloud logo" />
+        <img className="auth-logo-image" src="/image.png" alt="SecureCloud logo" />
         <h1 className="auth-title auth-title-center">SecureCloud</h1>
         <p className="auth-tagline auth-tagline-center">Create your account and start protecting your files.</p>
 
@@ -67,15 +68,24 @@ function Register() {
           />
 
           <label className="auth-label">Password</label>
-          <input
-            className="auth-input"
-            type="password"
-            placeholder="Minimum 8 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+          <div className="auth-input-wrap">
+            <input
+              className="auth-input auth-input-password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Minimum 8 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
 
           <div className="auth-helper">Use at least 8 characters to keep your account secure.</div>
 

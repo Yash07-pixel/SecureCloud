@@ -10,6 +10,7 @@ function Trash() {
   const [deletingId, setDeletingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
+  const [pageStatus, setPageStatus] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
@@ -28,7 +29,7 @@ function Trash() {
       return;
     }
     fetchTrashFiles();
-  }, []);
+  }, [navigate]);
 
   const fetchTrashFiles = async () => {
     try {
@@ -45,8 +46,11 @@ function Trash() {
       await restoreFile(fileId);
       notifySuccess('File restored successfully');
       fetchTrashFiles();
+      setPageStatus({ type: 'success', message: 'File restored successfully.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Restore failed'));
+      const message = getErrorMessage(err, 'Restore failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setRestoringId(null);
     }
@@ -65,8 +69,11 @@ function Trash() {
       await permanentDelete(fileId);
       notifySuccess('File deleted permanently');
       fetchTrashFiles();
+      setPageStatus({ type: 'success', message: 'File deleted permanently.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Delete failed'));
+      const message = getErrorMessage(err, 'Delete failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setDeletingId(null);
     }
@@ -97,11 +104,7 @@ function Trash() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
-          <div className="sidebar-logo-copy">
-            <span className="sidebar-kicker">Encrypted Workspace</span>
-            <span>SecureCloud</span>
-          </div>
+          <img className="sidebar-logo-mark" src="/image.png" alt="SecureCloud logo" />
         </div>
         <div className="sidebar-nav">
           <div className="nav-item" onClick={() => navigate('/dashboard')}>
@@ -139,6 +142,12 @@ function Trash() {
         </div>
 
         <div className="content">
+          {pageStatus && (
+            <div className={`page-note ${pageStatus.type === 'danger' ? 'page-note-danger' : 'page-note-success'}`}>
+              {pageStatus.message}
+            </div>
+          )}
+
           {files.length > 0 && (
             <div className="page-note page-note-danger">
               Files stay in trash until you restore them or delete them permanently.

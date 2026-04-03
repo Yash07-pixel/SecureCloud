@@ -10,6 +10,7 @@ function Starred() {
   const [unstarringId, setUnstarringId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name-asc');
+  const [pageStatus, setPageStatus] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
@@ -28,7 +29,7 @@ function Starred() {
       return;
     }
     fetchStarredFiles();
-  }, []);
+  }, [navigate]);
 
   const fetchStarredFiles = async () => {
     try {
@@ -45,8 +46,11 @@ function Starred() {
       await starFile(fileId);
       notifySuccess('File removed from starred');
       fetchStarredFiles();
+      setPageStatus({ type: 'success', message: 'File removed from starred.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Failed to unstar'));
+      const message = getErrorMessage(err, 'Failed to unstar');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setUnstarringId(null);
     }
@@ -63,8 +67,11 @@ function Starred() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      setPageStatus({ type: 'success', message: `Downloaded ${filename}.` });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Download failed'));
+      const message = getErrorMessage(err, 'Download failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setDownloadingId(null);
     }
@@ -95,11 +102,7 @@ function Starred() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
-          <div className="sidebar-logo-copy">
-            <span className="sidebar-kicker">Encrypted Workspace</span>
-            <span>SecureCloud</span>
-          </div>
+          <img className="sidebar-logo-mark" src="/image.png" alt="SecureCloud logo" />
         </div>
         <div className="sidebar-nav">
           <div className="nav-item" onClick={() => navigate('/dashboard')}>
@@ -137,6 +140,12 @@ function Starred() {
         </div>
 
         <div className="content">
+          {pageStatus && (
+            <div className={`page-note ${pageStatus.type === 'danger' ? 'page-note-danger' : 'page-note-success'}`}>
+              {pageStatus.message}
+            </div>
+          )}
+
           <div className="section-heading">
             <h3 className="section-title">Your Starred Files</h3>
             <span className="section-chip">{visibleFiles.length} items</span>

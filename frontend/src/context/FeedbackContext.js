@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 const FeedbackContext = createContext(null);
 
@@ -15,23 +15,23 @@ export function FeedbackProvider({ children }) {
   const nextToastId = useRef(1);
   const confirmResolver = useRef(null);
 
-  const notify = (message, type = 'info') => {
+  const notify = useCallback((message, type = 'info') => {
     const id = nextToastId.current++;
     setToasts((current) => [...current, { id, message, type }]);
     window.setTimeout(() => {
       setToasts((current) => current.filter((toast) => toast.id !== id));
     }, 3200);
-  };
+  }, []);
 
-  const notifySuccess = (message) => notify(message, 'success');
-  const notifyError = (message) => notify(message, 'error');
-  const notifyInfo = (message) => notify(message, 'info');
+  const notifySuccess = useCallback((message) => notify(message, 'success'), [notify]);
+  const notifyError = useCallback((message) => notify(message, 'error'), [notify]);
+  const notifyInfo = useCallback((message) => notify(message, 'info'), [notify]);
 
-  const confirm = ({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'default' }) =>
+  const confirm = useCallback(({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'default' }) =>
     new Promise((resolve) => {
       confirmResolver.current = resolve;
       setConfirmState({ title, message, confirmLabel, cancelLabel, tone });
-    });
+    }), []);
 
   const closeConfirm = (result) => {
     if (confirmResolver.current) {
@@ -52,7 +52,7 @@ export function FeedbackProvider({ children }) {
         return normalizeMessage(detail, fallback);
       },
     }),
-    []
+    [confirm, notifyError, notifyInfo, notifySuccess]
   );
 
   return (

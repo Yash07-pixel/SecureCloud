@@ -23,6 +23,7 @@ function Dashboard() {
   const [starringId, setStarringId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [pageStatus, setPageStatus] = useState(null);
   const navigate = useNavigate();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
 
@@ -41,7 +42,7 @@ function Dashboard() {
       return;
     }
     fetchFiles();
-  }, []);
+  }, [navigate]);
 
   const fetchFiles = async () => {
     try {
@@ -79,9 +80,12 @@ function Dashboard() {
         setUploadSteps(0);
         setUploading(false);
         fetchFiles();
+        setPageStatus({ type: 'success', message: `Uploaded ${file.name} successfully.` });
       }, 2000);
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Upload failed'));
+      const message = getErrorMessage(err, 'Upload failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
       setShowUploadModal(false);
       setUploading(false);
     }
@@ -99,8 +103,11 @@ function Dashboard() {
       await deleteFile(fileId);
       notifySuccess('File moved to trash');
       fetchFiles();
+      setPageStatus({ type: 'success', message: 'File moved to trash.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Delete failed'));
+      const message = getErrorMessage(err, 'Delete failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setDeletingId(null);
     }
@@ -117,8 +124,11 @@ function Dashboard() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      setPageStatus({ type: 'success', message: `Downloaded ${filename}.` });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Download failed'));
+      const message = getErrorMessage(err, 'Download failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setDownloadingId(null);
     }
@@ -134,6 +144,7 @@ function Dashboard() {
       };
       await shareFile(payload);
       notifySuccess('File shared successfully');
+      setPageStatus({ type: 'success', message: `Shared file access with ${shareEmail}.` });
       setShowShareModal(false);
 
       const updatedFiles = await fetchFiles();
@@ -145,7 +156,9 @@ function Dashboard() {
       setShareEmail('');
       setShareExpiry('24');
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Share failed. Make sure the user is registered.'));
+      const message = getErrorMessage(err, 'Share failed. Make sure the user is registered.');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setSharing(false);
     }
@@ -157,8 +170,11 @@ function Dashboard() {
       await starFile(fileId);
       notifySuccess('File updated');
       fetchFiles();
+      setPageStatus({ type: 'success', message: 'Starred files updated.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Star failed'));
+      const message = getErrorMessage(err, 'Star failed');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setStarringId(null);
     }
@@ -215,6 +231,13 @@ function Dashboard() {
     return formatDate(value);
   };
 
+  const getFilePrivacyLabel = (file) => {
+    if (!file.shared_with?.length) return 'Private';
+    return `${file.shared_with.length} shared`;
+  };
+
+  const getFileIntegrityLabel = (hash) => (hash ? 'SHA-256 verified' : 'Hash unavailable');
+
   const visibleFiles = [...files]
     .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
@@ -229,11 +252,7 @@ function Dashboard() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
-          <div className="sidebar-logo-copy">
-            <span className="sidebar-kicker">Encrypted Workspace</span>
-            <span>SecureCloud</span>
-          </div>
+          <img className="sidebar-logo-mark" src="/image.png" alt="SecureCloud logo" />
         </div>
 
         <div className="sidebar-nav">
@@ -287,6 +306,12 @@ function Dashboard() {
             All your files are protected with <strong>&nbsp;AES-256 encryption&nbsp;</strong>
             and verified with <strong>&nbsp;SHA-256 integrity checks</strong>
           </div>
+
+          {pageStatus && (
+            <div className={`page-note ${pageStatus.type === 'danger' ? 'page-note-danger' : 'page-note-success'}`}>
+              {pageStatus.message}
+            </div>
+          )}
 
           <div className="section-heading">
             <h3 className="section-title">My Files</h3>
@@ -344,7 +369,7 @@ function Dashboard() {
                             </span>
                             <div className="file-submeta">
                               <span>{formatRelativeTime(file.uploaded_at)}</span>
-                              <span>{file.shared_with?.length ? `${file.shared_with.length} shared` : 'Private'}</span>
+                              <span>{getFilePrivacyLabel(file)}</span>
                             </div>
                           </div>
                         </div>
@@ -457,6 +482,12 @@ function Dashboard() {
                   Uploaded {formatRelativeTime(selectedFile.uploaded_at)} · {formatSize(selectedFile.size)}
                 </div>
               </div>
+            </div>
+
+            <div className="details-chip-row">
+              <span className="status-pill status-pill-success">AES-256 protected</span>
+              <span className="status-pill status-pill-info">{getFilePrivacyLabel(selectedFile)}</span>
+              <span className="status-pill status-pill-neutral">{getFileIntegrityLabel(selectedFile.sha256_hash)}</span>
             </div>
 
             <div className="details-row">

@@ -255,19 +255,40 @@ body {
   line-height: 1.5;
 }
 
+.auth-input-wrap {
+  position: relative;
+}
+
+.auth-input-password {
+  padding-right: 76px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--primary-theme);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .auth-card-single {
   width: min(100%, 480px);
   max-width: 480px;
   margin: 0 auto;
-  padding: 40px 36px;
+  padding: 48px 42px 40px;
   border-radius: 28px;
 }
 
 .auth-logo-image {
   display: block;
-  width: 96px;
-  height: 96px;
-  margin: 0 auto 18px;
+  width: 108px;
+  height: 108px;
+  margin: 0 auto 24px;
   object-fit: contain;
   filter: drop-shadow(0 16px 28px rgba(33, 99, 210, 0.18));
 }
@@ -282,11 +303,19 @@ body {
 }
 
 .auth-title-center {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  font-size: 52px;
+  line-height: 1.02;
+  letter-spacing: -0.06em;
 }
 
 .auth-tagline-center {
-  margin-bottom: 26px;
+  margin-bottom: 34px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 16px;
+  line-height: 1.55;
 }
 
 /* ── Dashboard ── */
@@ -308,26 +337,16 @@ body {
 }
 
 .sidebar-logo {
-  font-size: 22px;
-  font-weight: 800;
-  color: #1a1a2e;
   padding: 24px 24px;
   border-bottom: 1px solid #f0f0f0;
-  letter-spacing: -0.5px;
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.sidebar-logo-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: center;
 }
 
 .sidebar-logo-mark {
-  width: 48px;
-  height: 48px;
+  width: 120px;
+  height: 72px;
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -1299,6 +1318,16 @@ body {
   background: var(--success-soft-theme);
 }
 
+.status-pill-info {
+  color: var(--primary-theme);
+  background: var(--primary-soft-theme);
+}
+
+.status-pill-neutral {
+  color: var(--text-main);
+  background: var(--surface-alt);
+}
+
 .status-pill-danger {
   color: var(--danger-theme);
   background: var(--danger-soft-theme);
@@ -1317,6 +1346,12 @@ body {
   color: var(--danger-theme);
   background: var(--danger-soft-theme);
   border-color: color-mix(in srgb, var(--danger-theme) 24%, var(--border-soft));
+}
+
+.page-note-success {
+  color: var(--success-theme);
+  background: var(--success-soft-theme);
+  border-color: color-mix(in srgb, var(--success-theme) 20%, var(--border-soft));
 }
 
 .details-hero {
@@ -1341,6 +1376,13 @@ body {
   color: var(--text-muted-theme);
   font-size: 12px;
   font-weight: 600;
+}
+
+.details-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .toolbar-row {
@@ -1510,8 +1552,24 @@ body {
     font-size: 24px;
   }
 
-  .auth-title {
-    font-size: 30px;
+  .auth-card-single {
+    padding: 38px 24px 30px;
+  }
+
+  .auth-logo-image {
+    width: 92px;
+    height: 92px;
+    margin-bottom: 18px;
+  }
+
+  .auth-title-center {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  .auth-tagline-center {
+    margin-bottom: 26px;
+    font-size: 15px;
   }
 
   .theme-toggle {

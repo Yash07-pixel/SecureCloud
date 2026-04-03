@@ -10,6 +10,7 @@ function SharedWithMe() {
   const [removingId, setRemovingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('expiry');
+  const [pageStatus, setPageStatus] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
@@ -34,7 +35,7 @@ function SharedWithMe() {
     }, 3600000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [navigate]);
 
   const fetchSharedFiles = async () => {
     try {
@@ -56,8 +57,11 @@ function SharedWithMe() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      setPageStatus({ type: 'success', message: `Downloaded ${filename}.` });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Download failed or access has expired'));
+      const message = getErrorMessage(err, 'Download failed or access has expired');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setDownloadingId(null);
     }
@@ -76,8 +80,11 @@ function SharedWithMe() {
       await removeSharedFile(fileId);
       notifySuccess('File removed from your shared list');
       fetchSharedFiles();
+      setPageStatus({ type: 'success', message: 'File removed from your shared list.' });
     } catch (err) {
-      notifyError(getErrorMessage(err, 'Failed to remove file'));
+      const message = getErrorMessage(err, 'Failed to remove file');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
     } finally {
       setRemovingId(null);
     }
@@ -117,11 +124,7 @@ function SharedWithMe() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
-          <div className="sidebar-logo-copy">
-            <span className="sidebar-kicker">Encrypted Workspace</span>
-            <span>SecureCloud</span>
-          </div>
+          <img className="sidebar-logo-mark" src="/image.png" alt="SecureCloud logo" />
         </div>
         <div className="sidebar-nav">
           <div className="nav-item" onClick={() => navigate('/dashboard')}>
@@ -162,6 +165,12 @@ function SharedWithMe() {
           <div className="security-banner">
             You can only <strong>&nbsp;download&nbsp;</strong> files shared with you. Sharing is restricted to file owners only.
           </div>
+
+          {pageStatus && (
+            <div className={`page-note ${pageStatus.type === 'danger' ? 'page-note-danger' : 'page-note-success'}`}>
+              {pageStatus.message}
+            </div>
+          )}
 
           <div className="section-heading">
             <h3 className="section-title">Files Shared with You</h3>

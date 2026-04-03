@@ -6,6 +6,7 @@ import '../styles.css';
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -24,7 +25,7 @@ function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card auth-card-single">
-        <img className="auth-logo-image" src="/logo-mark.svg" alt="SecureCloud logo" />
+        <img className="auth-logo-image" src="/image.png" alt="SecureCloud logo" />
         <h1 className="auth-title auth-title-center">SecureCloud</h1>
         <p className="auth-tagline auth-tagline-center">Sign in to your secure workspace.</p>
 
@@ -42,14 +43,23 @@ function Login() {
           />
 
           <label className="auth-label">Password</label>
-          <input
-            className="auth-input"
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="auth-input-wrap">
+            <input
+              className="auth-input auth-input-password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword((current) => !current)}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
 
           <button className="auth-button" type="submit">
             Login
