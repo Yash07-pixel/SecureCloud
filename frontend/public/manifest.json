@@ -3,19 +3,19 @@
   "name": "SecureCloud",
   "icons": [
     {
-      "src": "image.png",
-      "sizes": "1024x560",
+      "src": "logo-cutout.png",
+      "sizes": "612x559",
       "type": "image/png"
     },
     {
-      "src": "image.png",
+      "src": "logo-cutout.png",
       "type": "image/png",
-      "sizes": "1024x560"
+      "sizes": "612x559"
     },
     {
-      "src": "image.png",
+      "src": "logo-cutout.png",
       "type": "image/png",
-      "sizes": "1024x560"
+      "sizes": "612x559"
     }
   ],
   "start_url": ".",
