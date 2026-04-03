@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getTrashFiles, restoreFile, permanentDelete } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles.css';
+import { useFeedback } from '../context/FeedbackContext';
 
 function Trash() {
   const [files, setFiles] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -35,19 +37,27 @@ function Trash() {
   const handleRestore = async (fileId) => {
     try {
       await restoreFile(fileId);
+      notifySuccess('File restored successfully');
       fetchTrashFiles();
     } catch (err) {
-      alert('Restore failed');
+      notifyError(getErrorMessage(err, 'Restore failed'));
     }
   };
 
   const handlePermanentDelete = async (fileId) => {
-    if (!window.confirm('Permanently delete this file? This cannot be undone!')) return;
+    const confirmed = await confirm({
+      title: 'Delete File Forever?',
+      message: 'This action cannot be undone.',
+      confirmLabel: 'Delete Forever',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await permanentDelete(fileId);
+      notifySuccess('File deleted permanently');
       fetchTrashFiles();
     } catch (err) {
-      alert('Delete failed');
+      notifyError(getErrorMessage(err, 'Delete failed'));
     }
   };
 

@@ -4,6 +4,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.routers import auth, files
+from app.core.database import ensure_indexes
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
@@ -29,6 +30,11 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(files.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    await ensure_indexes()
 
 @app.get("/")
 async def root():

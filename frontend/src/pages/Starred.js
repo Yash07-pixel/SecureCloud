@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getStarredFiles, downloadFile, starFile } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles.css';
+import { useFeedback } from '../context/FeedbackContext';
 
 function Starred() {
   const [files, setFiles] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -35,9 +37,10 @@ function Starred() {
   const handleUnstar = async (fileId) => {
     try {
       await starFile(fileId);
+      notifySuccess('File removed from starred');
       fetchStarredFiles();
     } catch (err) {
-      alert('Failed to unstar');
+      notifyError(getErrorMessage(err, 'Failed to unstar'));
     }
   };
 
@@ -52,7 +55,7 @@ function Starred() {
       link.click();
       link.remove();
     } catch (err) {
-      alert('Download failed');
+      notifyError(getErrorMessage(err, 'Download failed'));
     }
   };
 

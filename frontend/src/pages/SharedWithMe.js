@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getSharedFiles, downloadFile, removeSharedFile } from '../services/api';
 import '../styles.css';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useFeedback } from '../context/FeedbackContext';
 
 function SharedWithMe() {
   const [files, setFiles] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -49,17 +51,24 @@ function SharedWithMe() {
       link.click();
       link.remove();
     } catch (err) {
-      alert('Download failed or access has expired');
+      notifyError(getErrorMessage(err, 'Download failed or access has expired'));
     }
   };
 
   const handleRemove = async (fileId) => {
-    if (!window.confirm('Remove this file from your shared list?')) return;
+    const confirmed = await confirm({
+      title: 'Remove Shared File?',
+      message: 'This will remove the file from your shared list.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await removeSharedFile(fileId);
+      notifySuccess('File removed from your shared list');
       fetchSharedFiles();
     } catch (err) {
-      alert('Failed to remove file');
+      notifyError(getErrorMessage(err, 'Failed to remove file'));
     }
   };
 

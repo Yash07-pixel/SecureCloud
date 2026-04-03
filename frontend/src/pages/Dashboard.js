@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { listFiles, uploadFile, deleteFile, shareFile, downloadFile, starFile } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles.css';
+import { useFeedback } from '../context/FeedbackContext';
 
 function Dashboard() {
   const [files, setFiles] = useState([]);
@@ -14,8 +15,9 @@ function Dashboard() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [username, setUsername] = useState('');
-  const [shareExpiry, setShareExpiry] = useState('');
+  const [shareExpiry, setShareExpiry] = useState('24');
   const navigate = useNavigate();
+  const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -71,18 +73,24 @@ function Dashboard() {
       }, 2000);
 
     } catch (err) {
-      alert('Upload failed');
+      notifyError(getErrorMessage(err, 'Upload failed'));
       setShowUploadModal(false);
     }
   };
 
   const handleDelete = async (fileId) => {
-    if (!window.confirm('Move this file to trash?')) return;
+    const confirmed = await confirm({
+      title: 'Move File To Trash?',
+      message: 'The file will stay in trash until you restore it or delete it permanently.',
+      confirmLabel: 'Move To Trash',
+    });
+    if (!confirmed) return;
     try {
       await deleteFile(fileId);
+      notifySuccess('File moved to trash');
       fetchFiles();
     } catch (err) {
-      alert('Delete failed');
+      notifyError(getErrorMessage(err, 'Delete failed'));
     }
   };
 
@@ -97,7 +105,7 @@ function Dashboard() {
       link.click();
       link.remove();
     } catch (err) {
-      alert('Download failed');
+      notifyError(getErrorMessage(err, 'Download failed'));
     }
   };
 
@@ -106,10 +114,10 @@ function Dashboard() {
       const payload = {
         file_id: shareFileId,
         share_with_email: shareEmail,
-        expiry_hours: shareExpiry ? parseInt(shareExpiry) : null
+        expiry_hours: parseInt(shareExpiry, 10)
       };
       await shareFile(payload);
-      alert('File shared successfully!');
+      notifySuccess('File shared successfully');
       setShowShareModal(false);
 
       // Refresh files and update selectedFile with new shared_with
@@ -120,18 +128,19 @@ function Dashboard() {
       }
 
       setShareEmail('');
-      setShareExpiry('');
+      setShareExpiry('24');
     } catch (err) {
-      alert('Share failed. Make sure the user is registered.');
+      notifyError(getErrorMessage(err, 'Share failed. Make sure the user is registered.'));
     }
   };
 
   const handleStar = async (fileId) => {
     try {
       await starFile(fileId);
+      notifySuccess('File updated');
       fetchFiles();
     } catch (err) {
-      alert('Star failed');
+      notifyError(getErrorMessage(err, 'Star failed'));
     }
   };
 
@@ -423,7 +432,6 @@ function Dashboard() {
               value={shareExpiry}
               onChange={(e) => setShareExpiry(e.target.value)}
             >
-              <option value="">Forever</option>
               <option value="24">24 Hours</option>
               <option value="72">3 Days</option>
               <option value="168">7 Days</option>

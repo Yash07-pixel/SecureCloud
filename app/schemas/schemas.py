@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import List
 from datetime import datetime
 
 
@@ -8,7 +8,15 @@ from datetime import datetime
 class UserRegister(BaseModel):
     name: str
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Name cannot be empty")
+        return stripped
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -34,4 +42,12 @@ class FileOut(BaseModel):
 class ShareFileRequest(BaseModel):
     file_id: str
     share_with_email: EmailStr
-    expiry_hours: Optional[int] = None  # None = forever, 24 = 24 hours, 168 = 7 days
+    expiry_hours: int
+
+    @field_validator("expiry_hours")
+    @classmethod
+    def validate_expiry_hours(cls, value: int) -> int:
+        allowed_values = {24, 72, 168, 720}
+        if value not in allowed_values:
+            raise ValueError("Expiry must be one of: 24, 72, 168, or 720 hours")
+        return value

@@ -14,8 +14,17 @@ function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Name cannot be empty');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
     try {
-      await registerUser({ name, email, password });
+      await registerUser({ name: trimmedName, email, password });
       setSuccess('Account created! Redirecting to login...');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
@@ -61,8 +70,10 @@ function Register() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
             required
           />
+          <p className="auth-bottom">Password must be at least 8 characters long.</p>
 
           <button className="auth-button" type="submit">
             Create Account

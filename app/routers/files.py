@@ -227,13 +227,14 @@ async def share_file(
     if doc["owner_email"] != current_user["email"]:
         raise HTTPException(status_code=403, detail="Only the owner can share this file")
 
+    if payload.share_with_email == current_user["email"]:
+        raise HTTPException(status_code=400, detail="You already have access to your own file")
+
     target = await users_collection.find_one({"email": payload.share_with_email})
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
 
-    expiry = None
-    if payload.expiry_hours:
-        expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
+    expiry = (datetime.utcnow() + timedelta(hours=payload.expiry_hours)).isoformat()
 
     await files_collection.update_one(
         {"_id": object_id},
@@ -252,10 +253,7 @@ async def share_file(
     )
 
     msg = f"File shared with {payload.share_with_email}"
-    if expiry:
-        msg += f" (expires in {payload.expiry_hours} hours)"
-    else:
-        msg += " (no expiry)"
+    msg += f" (expires in {payload.expiry_hours} hours)"
 
     return {"message": msg}
 
