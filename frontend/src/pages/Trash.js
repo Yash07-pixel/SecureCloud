@@ -78,6 +78,11 @@ function Trash() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const getFileExtension = (filename) => {
+    const parts = filename.split('.');
+    return parts.length > 1 ? parts.pop().toUpperCase() : 'FILE';
+  };
+
   const visibleFiles = [...files]
     .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
@@ -176,7 +181,17 @@ function Trash() {
                 <tbody>
                   {visibleFiles.map((file) => (
                     <tr key={file.id}>
-                      <td><span className="file-name-link static-file-name">{file.original_name}</span></td>
+                      <td>
+                        <div className="file-main-cell">
+                          <span className="file-type-pill">{getFileExtension(file.original_name)}</span>
+                          <div className="file-meta-stack">
+                            <span className="file-name-link static-file-name">{file.original_name}</span>
+                            <div className="file-submeta">
+                              <span>{file.owner_email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
                       <td>{formatSize(file.size)}</td>
                       <td>{file.owner_email}</td>
                       <td>

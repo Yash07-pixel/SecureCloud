@@ -175,6 +175,34 @@ function Dashboard() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const getFileExtension = (filename) => {
+    const parts = filename.split('.');
+    return parts.length > 1 ? parts.pop().toUpperCase() : 'FILE';
+  };
+
+  const formatDate = (value) => {
+    if (!value) return 'Unknown';
+    return new Date(value).toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  const formatRelativeTime = (value) => {
+    if (!value) return 'Unknown';
+    const date = new Date(value);
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return formatDate(value);
+  };
+
   const visibleFiles = [...files]
     .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
@@ -287,15 +315,24 @@ function Dashboard() {
                   {visibleFiles.map((file) => (
                     <tr key={file.id}>
                       <td>
-                        <span
-                          className="file-name-link"
-                          onClick={() => {
-                            setSelectedFile(file);
-                            setShowDetailsModal(true);
-                          }}
-                        >
-                          {file.original_name}
-                        </span>
+                        <div className="file-main-cell">
+                          <span className="file-type-pill">{getFileExtension(file.original_name)}</span>
+                          <div className="file-meta-stack">
+                            <span
+                              className="file-name-link"
+                              onClick={() => {
+                                setSelectedFile(file);
+                                setShowDetailsModal(true);
+                              }}
+                            >
+                              {file.original_name}
+                            </span>
+                            <div className="file-submeta">
+                              <span>{formatRelativeTime(file.uploaded_at)}</span>
+                              <span>{file.shared_with?.length ? `${file.shared_with.length} shared` : 'Private'}</span>
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td>{formatSize(file.size)}</td>
                       <td>
@@ -397,6 +434,15 @@ function Dashboard() {
         <div className="modal-bg">
           <div className="details-modal">
             <div className="details-title">Security Details</div>
+            <div className="details-hero">
+              <span className="file-type-pill file-type-pill-large">{getFileExtension(selectedFile.original_name)}</span>
+              <div>
+                <div className="details-hero-name">{selectedFile.original_name}</div>
+                <div className="details-hero-sub">
+                  Uploaded {formatRelativeTime(selectedFile.uploaded_at)} · {formatSize(selectedFile.size)}
+                </div>
+              </div>
+            </div>
 
             <div className="details-row">
               <div className="details-label">File Name</div>
@@ -426,6 +472,11 @@ function Dashboard() {
             <div className="details-row">
               <div className="details-label">Owner</div>
               <div className="details-value">{selectedFile.owner_email}</div>
+            </div>
+
+            <div className="details-row">
+              <div className="details-label">Uploaded</div>
+              <div className="details-value">{formatDate(selectedFile.uploaded_at)}</div>
             </div>
 
             <div className="details-row">
