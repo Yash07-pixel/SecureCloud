@@ -9,6 +9,7 @@ function SharedWithMe() {
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -73,14 +74,14 @@ function SharedWithMe() {
   };
 
   const formatSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const formatExpiry = (expiry, hoursRemaining) => {
     if (!expiry) return 'Never expires';
-    if (hoursRemaining === 0) return 'Access expired!';
+    if (hoursRemaining === 0) return 'Access expired';
     if (hoursRemaining < 24) return `${hoursRemaining}h remaining`;
     const days = Math.floor(hoursRemaining / 24);
     const hours = hoursRemaining % 24;
@@ -89,100 +90,100 @@ function SharedWithMe() {
 
   return (
     <div className="dashboard-container">
-
-      {/* Sidebar */}
-        <div className="sidebar">
-          <div className="sidebar-logo">SecureCloud</div>
-          <div style={{padding: '12px 0'}}>
-            <div className="nav-item" onClick={() => navigate('/dashboard')}>
-              <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>▦</span> My Files
-            </div>
-            <div className={location.pathname === '/shared' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/shared')}>
-              <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⇄</span> Shared with Me
-            </div>
-            <div className={location.pathname === '/starred' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/starred')}>
-              <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>☆</span> Starred
-            </div>
-            <div className={location.pathname === '/trash' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/trash')}>
-              <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⊘</span> Trash
-            </div>
+      <div className="sidebar">
+        <div className="sidebar-logo">
+          <span className="sidebar-kicker">Encrypted Workspace</span>
+          <span>SecureCloud</span>
+        </div>
+        <div className="sidebar-nav">
+          <div className="nav-item" onClick={() => navigate('/dashboard')}>
+            <span className="nav-icon">MY</span> My Files
           </div>
-          <div className="sidebar-footer">
-            <div className="nav-item" onClick={() => {
-              localStorage.removeItem('token');
-              navigate('/login');
-            }}>
-              <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>→</span> Logout
-            </div>
+          <div className={location.pathname === '/shared' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/shared')}>
+            <span className="nav-icon">SH</span> Shared with Me
+          </div>
+          <div className={location.pathname === '/starred' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/starred')}>
+            <span className="nav-icon">ST</span> Starred
+          </div>
+          <div className={location.pathname === '/trash' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/trash')}>
+            <span className="nav-icon">TR</span> Trash
           </div>
         </div>
+        <div className="sidebar-footer">
+          <div
+            className="nav-item"
+            onClick={() => {
+              localStorage.removeItem('token');
+              navigate('/login');
+            }}
+          >
+            <span className="nav-icon">EX</span> Logout
+          </div>
+        </div>
+      </div>
 
-      {/* Main */}
       <div className="main">
         <div className="topbar">
-          <div className="greeting">Shared with Me</div>
+          <div>
+            <div className="greeting">Shared with Me</div>
+            <div className="greeting-sub">Review files others have granted you access to and keep track of expiry windows.</div>
+          </div>
         </div>
 
         <div className="content">
           <div className="security-banner">
-            🔒 You can only <strong>&nbsp;download&nbsp;</strong> files shared with you.
-            Sharing is restricted to file owners only.
+            You can only <strong>&nbsp;download&nbsp;</strong> files shared with you. Sharing is restricted to file owners only.
           </div>
 
-          <h3 className="section-title">Files Shared with You</h3>
+          <div className="section-heading">
+            <h3 className="section-title">Files Shared with You</h3>
+            <span className="section-chip">{files.length} items</span>
+          </div>
 
           {files.length === 0 ? (
-            <div className="empty">
+            <div className="empty empty-state">
               <p>No files shared with you yet.</p>
             </div>
           ) : (
-            <table className="file-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Size</th>
-                  <th>Shared By</th>
-                  <th>Encryption</th>
-                  <th>Access</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {files.map((file) => (
-                  <tr key={file.id}>
-                    <td>📄 {file.original_name}</td>
-                    <td>{formatSize(file.size)}</td>
-                    <td>{file.owner_email}</td>
-                    <td>
-                      <span className="badge-encrypted">🔒 AES-256</span>
-                    </td>
-                    <td>
-                      <span style={{
-                        fontSize: '12px',
-                        color: file.expiry ? '#d93025' : '#188038',
-                        fontWeight: '500'
-                      }}>
-                        {formatExpiry(file.expiry, file.hours_remaining)}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDownload(file.id, file.original_name)}
-                      >
-                        Download
-                      </button>
-                      <button
-                        className="action-btn action-btn-danger"
-                        onClick={() => handleRemove(file.id)}
-                      >
-                        Remove
-                      </button>
-                    </td>
+            <div className="table-card">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Shared By</th>
+                    <th>Encryption</th>
+                    <th>Access</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {files.map((file) => (
+                    <tr key={file.id}>
+                      <td><span className="file-name-link static-file-name">{file.original_name}</span></td>
+                      <td>{formatSize(file.size)}</td>
+                      <td>{file.owner_email}</td>
+                      <td>
+                        <span className="badge-encrypted">AES-256</span>
+                      </td>
+                      <td>
+                        <span className={file.expiry ? 'status-pill status-pill-danger' : 'status-pill status-pill-success'}>
+                          {formatExpiry(file.expiry, file.hours_remaining)}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
+                          Download
+                        </button>
+                        <button className="action-btn action-btn-danger" onClick={() => handleRemove(file.id)}>
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

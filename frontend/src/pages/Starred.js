@@ -9,6 +9,7 @@ function Starred() {
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -60,90 +61,95 @@ function Starred() {
   };
 
   const formatSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
     <div className="dashboard-container">
-
-      {/* Sidebar */}
       <div className="sidebar">
-        <div className="sidebar-logo">SecureCloud</div>
-        <div style={{padding: '12px 0'}}>
+        <div className="sidebar-logo">
+          <span className="sidebar-kicker">Encrypted Workspace</span>
+          <span>SecureCloud</span>
+        </div>
+        <div className="sidebar-nav">
           <div className="nav-item" onClick={() => navigate('/dashboard')}>
-            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>▦</span> My Files
+            <span className="nav-icon">MY</span> My Files
           </div>
           <div className={location.pathname === '/shared' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/shared')}>
-            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⇄</span> Shared with Me
+            <span className="nav-icon">SH</span> Shared with Me
           </div>
           <div className={location.pathname === '/starred' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/starred')}>
-            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>☆</span> Starred
+            <span className="nav-icon">ST</span> Starred
           </div>
           <div className={location.pathname === '/trash' ? 'nav-item-active' : 'nav-item'} onClick={() => navigate('/trash')}>
-            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>⊘</span> Trash
+            <span className="nav-icon">TR</span> Trash
           </div>
         </div>
         <div className="sidebar-footer">
-          <div className="nav-item" onClick={() => {
-            localStorage.removeItem('token');
-            navigate('/login');
-          }}>
-            <span style={{width:'20px',display:'inline-block',textAlign:'center',marginRight:'4px',color:'#888',fontSize:'15px'}}>→</span> Logout
+          <div
+            className="nav-item"
+            onClick={() => {
+              localStorage.removeItem('token');
+              navigate('/login');
+            }}
+          >
+            <span className="nav-icon">EX</span> Logout
           </div>
         </div>
       </div>
 
-      {/* Main */}
       <div className="main">
         <div className="topbar">
-          <div className="greeting">Starred Files</div>
+          <div>
+            <div className="greeting">Starred Files</div>
+            <div className="greeting-sub">Keep your most important documents close and remove stars whenever priorities change.</div>
+          </div>
         </div>
 
         <div className="content">
-          <h3 className="section-title">Your Starred Files</h3>
+          <div className="section-heading">
+            <h3 className="section-title">Your Starred Files</h3>
+            <span className="section-chip">{files.length} items</span>
+          </div>
 
           {files.length === 0 ? (
-            <div className="empty">
+            <div className="empty empty-state">
               <p>No starred files yet. Star a file from My Files!</p>
             </div>
           ) : (
-            <table className="file-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Size</th>
-                  <th>Encryption</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {files.map((file) => (
-                  <tr key={file.id}>
-                    <td>📄 {file.original_name}</td>
-                    <td>{formatSize(file.size)}</td>
-                    <td>
-                      <span className="badge-encrypted">🔒 AES-256</span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDownload(file.id, file.original_name)}
-                      >
-                        Download
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleUnstar(file.id)}
-                      >
-                        Unstar
-                      </button>
-                    </td>
+            <div className="table-card">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Encryption</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {files.map((file) => (
+                    <tr key={file.id}>
+                      <td><span className="file-name-link static-file-name">{file.original_name}</span></td>
+                      <td>{formatSize(file.size)}</td>
+                      <td>
+                        <span className="badge-encrypted">AES-256</span>
+                      </td>
+                      <td>
+                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
+                          Download
+                        </button>
+                        <button className="action-btn" onClick={() => handleUnstar(file.id)}>
+                          Unstar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

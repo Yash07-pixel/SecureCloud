@@ -71,7 +71,6 @@ function Dashboard() {
         setUploadSteps(0);
         fetchFiles();
       }, 2000);
-
     } catch (err) {
       notifyError(getErrorMessage(err, 'Upload failed'));
       setShowUploadModal(false);
@@ -114,16 +113,15 @@ function Dashboard() {
       const payload = {
         file_id: shareFileId,
         share_with_email: shareEmail,
-        expiry_hours: parseInt(shareExpiry, 10)
+        expiry_hours: parseInt(shareExpiry, 10),
       };
       await shareFile(payload);
       notifySuccess('File shared successfully');
       setShowShareModal(false);
 
-      // Refresh files and update selectedFile with new shared_with
       const updatedFiles = await fetchFiles();
       if (updatedFiles && selectedFile) {
-        const updated = updatedFiles.find(f => f.id === selectedFile.id);
+        const updated = updatedFiles.find((file) => file.id === selectedFile.id);
         if (updated) setSelectedFile(updated);
       }
 
@@ -150,220 +148,190 @@ function Dashboard() {
   };
 
   const formatSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
     <div className="dashboard-container">
-
-      {/* Sidebar */}
       <div className="sidebar">
-        <div className="sidebar-logo">SecureCloud</div>
+        <div className="sidebar-logo">
+          <span className="sidebar-kicker">Encrypted Workspace</span>
+          <span>SecureCloud</span>
+        </div>
 
-        <div style={{padding: '12px 0'}}>
+        <div className="sidebar-nav">
           <div className="nav-item" onClick={() => document.getElementById('fileInput').click()}>
-            <span>↑</span> Upload File
+            <span className="nav-icon">UP</span> Upload File
           </div>
-          <input
-            id="fileInput"
-            type="file"
-            style={{ display: 'none' }}
-            onChange={handleUpload}
-          />
+          <input id="fileInput" type="file" style={{ display: 'none' }} onChange={handleUpload} />
           <div className="nav-item-active">
-            <span>▦</span> My Files
+            <span className="nav-icon">MY</span> My Files
           </div>
           <div className="nav-item" onClick={() => navigate('/shared')}>
-            <span>⇄</span> Shared with Me
+            <span className="nav-icon">SH</span> Shared with Me
           </div>
           <div className="nav-item" onClick={() => navigate('/starred')}>
-            <span>☆</span> Starred
+            <span className="nav-icon">ST</span> Starred
           </div>
           <div className="nav-item" onClick={() => navigate('/trash')}>
-            <span>⊘</span> Trash
+            <span className="nav-icon">TR</span> Trash
           </div>
         </div>
 
         <div className="sidebar-footer">
           <div className="nav-item" onClick={handleLogout}>
-            <span>→</span> Logout
+            <span className="nav-icon">EX</span> Logout
           </div>
         </div>
       </div>
 
-      {/* Main */}
       <div className="main">
-
-        {/* Topbar */}
         <div className="topbar">
-          <div className="greeting">
-            Hi, <strong>{username}</strong>
+          <div>
+            <div className="greeting">
+              Hi, <strong>{username}</strong>
+            </div>
+            <div className="greeting-sub">Manage your encrypted files, shares, and recovery actions from one place.</div>
           </div>
-          <button
-            className="upload-btn"
-            onClick={() => document.getElementById('fileInput').click()}
-          >
-            ⬆ Upload
+          <button className="upload-btn" onClick={() => document.getElementById('fileInput').click()}>
+            Upload File
           </button>
         </div>
 
-        {/* Content */}
         <div className="content">
-
-          {/* Security Banner */}
           <div className="security-banner">
-            🛡 All your files are protected with <strong>&nbsp;AES-256 encryption&nbsp;</strong>
+            All your files are protected with <strong>&nbsp;AES-256 encryption&nbsp;</strong>
             and verified with <strong>&nbsp;SHA-256 integrity checks</strong>
           </div>
 
-          <h3 className="section-title">My Files</h3>
+          <div className="section-heading">
+            <h3 className="section-title">My Files</h3>
+            <span className="section-chip">{files.length} items</span>
+          </div>
 
           {files.length === 0 ? (
-            <div className="empty">
+            <div className="empty empty-state">
               <p>No files yet. Upload your first file!</p>
             </div>
           ) : (
-            <table className="file-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Size</th>
-                  <th>Encryption</th>
-                  <th>Hash</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {files.map((file) => (
-                  <tr key={file.id}>
-                    <td>
-                      <span
-                        style={{ cursor: 'pointer', color: '#1a73e8' }}
-                        onClick={() => {
-                          setSelectedFile(file);
-                          setShowDetailsModal(true);
-                        }}
-                      >
-                        📄 {file.original_name}
-                      </span>
-                    </td>
-                    <td>{formatSize(file.size)}</td>
-                    <td>
-                      <span className="badge-encrypted">🔒 AES-256</span>
-                    </td>
-                    <td>
-                      <span className="badge-hash" title={file.sha256_hash}>
-                        # {file.sha256_hash.substring(0, 12)}...
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleDownload(file.id, file.original_name)}
-                      >
-                        Download
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => handleStar(file.id)}
-                      >
-                        {file.starred ? 'Unstar' : 'Star'}
-                      </button>
-                      <button
-                        className="action-btn"
-                        onClick={() => {
-                          setShareFileId(file.id);
-                          setSelectedFile(file);
-                          setShowShareModal(true);
-                        }}
-                      >
-                        Share
-                      </button>
-                      <button
-                        className="action-btn action-btn-danger"
-                        onClick={() => handleDelete(file.id)}
-                      >
-                        Delete
-                      </button>
-                    </td>
+            <div className="table-card">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Encryption</th>
+                    <th>Hash</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {files.map((file) => (
+                    <tr key={file.id}>
+                      <td>
+                        <span
+                          className="file-name-link"
+                          onClick={() => {
+                            setSelectedFile(file);
+                            setShowDetailsModal(true);
+                          }}
+                        >
+                          {file.original_name}
+                        </span>
+                      </td>
+                      <td>{formatSize(file.size)}</td>
+                      <td>
+                        <span className="badge-encrypted">AES-256</span>
+                      </td>
+                      <td>
+                        <span className="badge-hash" title={file.sha256_hash}>
+                          {file.sha256_hash.substring(0, 12)}...
+                        </span>
+                      </td>
+                      <td>
+                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
+                          Download
+                        </button>
+                        <button className="action-btn" onClick={() => handleStar(file.id)}>
+                          {file.starred ? 'Unstar' : 'Star'}
+                        </button>
+                        <button
+                          className="action-btn"
+                          onClick={() => {
+                            setShareFileId(file.id);
+                            setSelectedFile(file);
+                            setShowShareModal(true);
+                          }}
+                        >
+                          Share
+                        </button>
+                        <button className="action-btn action-btn-danger" onClick={() => handleDelete(file.id)}>
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Upload Progress Modal */}
       {showUploadModal && (
         <div className="upload-modal-bg">
           <div className="upload-modal">
-            <div className="upload-modal-title">🔒 Securing your file...</div>
+            <div className="upload-modal-title">Securing your file...</div>
 
             <div className="upload-step">
-              <div className="step-icon">📂</div>
+              <div className="step-icon">01</div>
               <div className="step-text">
                 <div className="step-title">Reading file</div>
                 <div className="step-detail">Loading file into memory</div>
               </div>
-              <div className="step-status-done">✓ Done</div>
+              <div className="step-status-done">Done</div>
             </div>
 
             <div className="upload-step">
-              <div className="step-icon">🔑</div>
+              <div className="step-icon">02</div>
               <div className="step-text">
                 <div className="step-title">AES-256-CBC Encryption</div>
-                <div className="step-detail">Generating IV · Encrypting blocks</div>
+                <div className="step-detail">Generating IV and encrypting blocks</div>
               </div>
-              {uploadSteps >= 2
-                ? <div className="step-status-done">✓ Done</div>
-                : <div className="step-status-loading">...</div>
-              }
+              {uploadSteps >= 2 ? <div className="step-status-done">Done</div> : <div className="step-status-loading">...</div>}
             </div>
 
             <div className="upload-step">
-              <div className="step-icon">#️⃣</div>
+              <div className="step-icon">03</div>
               <div className="step-text">
                 <div className="step-title">SHA-256 Hash</div>
-                <div className="step-detail">
-                  {uploadedHash
-                    ? uploadedHash.substring(0, 20) + '...'
-                    : 'Generating integrity hash'}
-                </div>
+                <div className="step-detail">{uploadedHash ? `${uploadedHash.substring(0, 20)}...` : 'Generating integrity hash'}</div>
               </div>
-              {uploadSteps >= 3
-                ? <div className="step-status-done">✓ Done</div>
-                : <div className="step-status-loading">...</div>
-              }
+              {uploadSteps >= 3 ? <div className="step-status-done">Done</div> : <div className="step-status-loading">...</div>}
             </div>
 
             <div className="upload-step">
-              <div className="step-icon">💾</div>
+              <div className="step-icon">04</div>
               <div className="step-text">
                 <div className="step-title">Storing securely</div>
                 <div className="step-detail">Saving metadata to database</div>
               </div>
-              {uploadSteps >= 4
-                ? <div className="step-status-done">✓ Done</div>
-                : <div className="step-status-loading">...</div>
-              }
+              {uploadSteps >= 4 ? <div className="step-status-done">Done</div> : <div className="step-status-loading">...</div>}
             </div>
-
           </div>
         </div>
       )}
 
-      {/* File Details Modal */}
       {showDetailsModal && selectedFile && (
         <div className="modal-bg">
           <div className="details-modal">
-            <div className="details-title">🔒 Security Details</div>
+            <div className="details-title">Security Details</div>
 
             <div className="details-row">
               <div className="details-label">File Name</div>
-              <div className="details-value">📄 {selectedFile.original_name}</div>
+              <div className="details-value">{selectedFile.original_name}</div>
             </div>
 
             <div className="details-row">
@@ -373,12 +341,12 @@ function Dashboard() {
 
             <div className="details-row">
               <div className="details-label">Encryption</div>
-              <div className="details-value verified">🔒 AES-256-CBC ✅</div>
+              <div className="details-value verified">AES-256-CBC verified</div>
             </div>
 
             <div className="details-row">
               <div className="details-label">Integrity</div>
-              <div className="details-value verified">✅ SHA-256 Verified</div>
+              <div className="details-value verified">SHA-256 verified</div>
             </div>
 
             <div className="details-row">
@@ -395,29 +363,23 @@ function Dashboard() {
               <div className="details-label">Shared With</div>
               <div className="details-value">
                 {selectedFile.shared_with && selectedFile.shared_with.length === 0
-                  ? 'Nobody — Private 🔐'
+                  ? 'Nobody - Private'
                   : selectedFile.shared_with && selectedFile.shared_with.join(', ')}
               </div>
             </div>
 
-            <button
-              className="close-btn"
-              onClick={() => setShowDetailsModal(false)}
-            >
+            <button className="close-btn" onClick={() => setShowDetailsModal(false)}>
               Close
             </button>
           </div>
         </div>
       )}
 
-      {/* Share Modal */}
       {showShareModal && (
         <div className="modal-bg">
           <div className="modal">
             <h3 className="modal-title">Share File</h3>
-            <p className="modal-sub">
-              Enter the email of the person you want to share with
-            </p>
+            <p className="modal-sub">Enter the email of the person you want to share with.</p>
             <input
               className="auth-input"
               type="email"
@@ -427,11 +389,7 @@ function Dashboard() {
             />
 
             <label className="auth-label">Access Duration</label>
-            <select
-              className="auth-input"
-              value={shareExpiry}
-              onChange={(e) => setShareExpiry(e.target.value)}
-            >
+            <select className="auth-input" value={shareExpiry} onChange={(e) => setShareExpiry(e.target.value)}>
               <option value="24">24 Hours</option>
               <option value="72">3 Days</option>
               <option value="168">7 Days</option>
@@ -439,10 +397,7 @@ function Dashboard() {
             </select>
 
             <div className="modal-actions">
-              <button
-                className="cancel-btn"
-                onClick={() => setShowShareModal(false)}
-              >
+              <button className="cancel-btn" onClick={() => setShowShareModal(false)}>
                 Cancel
               </button>
               <button className="share-btn" onClick={handleShare}>
@@ -452,7 +407,6 @@ function Dashboard() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
