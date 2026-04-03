@@ -37,77 +37,61 @@ function Register() {
 
   return (
     <div className="auth-container">
-      <div className="auth-shell">
-        <div className="auth-panel auth-panel-brand">
-          <div className="auth-brand-mark" aria-hidden="true">
-            <span className="auth-brand-core">SC</span>
-          </div>
-          <div className="auth-eyebrow">Private Cloud Vault</div>
-          <h1 className="auth-title">SecureCloud</h1>
-          <p className="auth-tagline">Create your encrypted workspace in minutes.</p>
-          <div className="auth-feature-list">
-            <div className="auth-feature-item">Private uploads with encrypted storage</div>
-            <div className="auth-feature-item">Secure sharing with expiry controls</div>
-            <div className="auth-feature-item">Star, restore, and manage files with ease</div>
-          </div>
+      <div className="auth-card auth-card-single">
+        <div className="auth-brand-mark auth-brand-mark-center" aria-hidden="true">
+          <span className="auth-brand-core">SC</span>
         </div>
+        <h1 className="auth-title auth-title-center">SecureCloud</h1>
+        <p className="auth-tagline auth-tagline-center">Create your account and start protecting your files.</p>
 
-        <div className="auth-panel auth-card auth-panel-form">
-          <div className="auth-form-header">
-            <div className="auth-form-kicker">Create account</div>
-            <h2 className="auth-form-title">Set up your vault</h2>
-            <p className="auth-form-copy">Start storing and sharing files with protection built in from the first upload.</p>
-          </div>
+        {error && <p className="auth-error">{error}</p>}
+        {success && <p className="auth-success">{success}</p>}
 
-          {error && <p className="auth-error">{error}</p>}
-          {success && <p className="auth-success">{success}</p>}
+        <form className="auth-form" onSubmit={handleRegister}>
+          <label className="auth-label">Full Name</label>
+          <input
+            className="auth-input"
+            type="text"
+            placeholder="John Doe"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
 
-          <form className="auth-form" onSubmit={handleRegister}>
-            <label className="auth-label">Full Name</label>
-            <input
-              className="auth-input"
-              type="text"
-              placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+          <label className="auth-label">Email</label>
+          <input
+            className="auth-input"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-            <label className="auth-label">Email</label>
-            <input
-              className="auth-input"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+          <label className="auth-label">Password</label>
+          <input
+            className="auth-input"
+            type="password"
+            placeholder="Minimum 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
 
-            <label className="auth-label">Password</label>
-            <input
-              className="auth-input"
-              type="password"
-              placeholder="Minimum 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
+          <div className="auth-helper">Use at least 8 characters to keep your account secure.</div>
 
-            <div className="auth-helper">Use at least 8 characters to keep your account secure.</div>
+          <button className="auth-button" type="submit">
+            Create Account
+          </button>
+        </form>
 
-            <button className="auth-button" type="submit">
-              Create Account
-            </button>
-          </form>
-
-          <p className="auth-bottom">
-            Already have an account?{' '}
-            <span className="auth-link" onClick={() => navigate('/login')}>
-              Login here
-            </span>
-          </p>
-        </div>
+        <p className="auth-bottom">
+          Already have an account?{' '}
+          <span className="auth-link" onClick={() => navigate('/login')}>
+            Login here
+          </span>
+        </p>
       </div>
     </div>
   );
