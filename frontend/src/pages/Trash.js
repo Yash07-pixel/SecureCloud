@@ -6,6 +6,8 @@ import { useFeedback } from '../context/FeedbackContext';
 
 function Trash() {
   const [files, setFiles] = useState([]);
+  const [restoringId, setRestoringId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
@@ -37,11 +39,14 @@ function Trash() {
 
   const handleRestore = async (fileId) => {
     try {
+      setRestoringId(fileId);
       await restoreFile(fileId);
       notifySuccess('File restored successfully');
       fetchTrashFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Restore failed'));
+    } finally {
+      setRestoringId(null);
     }
   };
 
@@ -54,11 +59,14 @@ function Trash() {
     });
     if (!confirmed) return;
     try {
+      setDeletingId(fileId);
       await permanentDelete(fileId);
       notifySuccess('File deleted permanently');
       fetchTrashFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Delete failed'));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -144,11 +152,19 @@ function Trash() {
                       <td>{formatSize(file.size)}</td>
                       <td>{file.owner_email}</td>
                       <td>
-                        <button className="action-btn" onClick={() => handleRestore(file.id)}>
-                          Restore
+                        <button
+                          className="action-btn"
+                          disabled={restoringId === file.id}
+                          onClick={() => handleRestore(file.id)}
+                        >
+                          {restoringId === file.id ? 'Restoring...' : 'Restore'}
                         </button>
-                        <button className="action-btn action-btn-danger" onClick={() => handlePermanentDelete(file.id)}>
-                          Delete Forever
+                        <button
+                          className="action-btn action-btn-danger"
+                          disabled={deletingId === file.id}
+                          onClick={() => handlePermanentDelete(file.id)}
+                        >
+                          {deletingId === file.id ? 'Deleting...' : 'Delete Forever'}
                         </button>
                       </td>
                     </tr>

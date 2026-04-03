@@ -6,6 +6,8 @@ import { useFeedback } from '../context/FeedbackContext';
 
 function SharedWithMe() {
   const [files, setFiles] = useState([]);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
@@ -43,6 +45,7 @@ function SharedWithMe() {
 
   const handleDownload = async (fileId, filename) => {
     try {
+      setDownloadingId(fileId);
       const res = await downloadFile(fileId);
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
@@ -53,6 +56,8 @@ function SharedWithMe() {
       link.remove();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Download failed or access has expired'));
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -65,11 +70,14 @@ function SharedWithMe() {
     });
     if (!confirmed) return;
     try {
+      setRemovingId(fileId);
       await removeSharedFile(fileId);
       notifySuccess('File removed from your shared list');
       fetchSharedFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Failed to remove file'));
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -172,11 +180,19 @@ function SharedWithMe() {
                         </span>
                       </td>
                       <td>
-                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
-                          Download
+                        <button
+                          className="action-btn"
+                          disabled={downloadingId === file.id}
+                          onClick={() => handleDownload(file.id, file.original_name)}
+                        >
+                          {downloadingId === file.id ? 'Downloading...' : 'Download'}
                         </button>
-                        <button className="action-btn action-btn-danger" onClick={() => handleRemove(file.id)}>
-                          Remove
+                        <button
+                          className="action-btn action-btn-danger"
+                          disabled={removingId === file.id}
+                          onClick={() => handleRemove(file.id)}
+                        >
+                          {removingId === file.id ? 'Removing...' : 'Remove'}
                         </button>
                       </td>
                     </tr>

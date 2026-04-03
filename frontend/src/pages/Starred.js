@@ -6,6 +6,8 @@ import { useFeedback } from '../context/FeedbackContext';
 
 function Starred() {
   const [files, setFiles] = useState([]);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [unstarringId, setUnstarringId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
@@ -37,16 +39,20 @@ function Starred() {
 
   const handleUnstar = async (fileId) => {
     try {
+      setUnstarringId(fileId);
       await starFile(fileId);
       notifySuccess('File removed from starred');
       fetchStarredFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Failed to unstar'));
+    } finally {
+      setUnstarringId(null);
     }
   };
 
   const handleDownload = async (fileId, filename) => {
     try {
+      setDownloadingId(fileId);
       const res = await downloadFile(fileId);
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
@@ -57,6 +63,8 @@ function Starred() {
       link.remove();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Download failed'));
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -138,11 +146,19 @@ function Starred() {
                         <span className="badge-encrypted">AES-256</span>
                       </td>
                       <td>
-                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
-                          Download
+                        <button
+                          className="action-btn"
+                          disabled={downloadingId === file.id}
+                          onClick={() => handleDownload(file.id, file.original_name)}
+                        >
+                          {downloadingId === file.id ? 'Downloading...' : 'Download'}
                         </button>
-                        <button className="action-btn" onClick={() => handleUnstar(file.id)}>
-                          Unstar
+                        <button
+                          className="action-btn"
+                          disabled={unstarringId === file.id}
+                          onClick={() => handleUnstar(file.id)}
+                        >
+                          {unstarringId === file.id ? 'Updating...' : 'Unstar'}
                         </button>
                       </td>
                     </tr>

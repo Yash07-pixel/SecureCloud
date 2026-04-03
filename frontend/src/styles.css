@@ -233,7 +233,7 @@ body {
 .topbar {
   background: #ffffff;
   border-bottom: 1px solid #e0e0e0;
-  padding: 14px 32px;
+  padding: 14px 120px 14px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -822,6 +822,20 @@ body {
   background: var(--surface-hover);
 }
 
+.action-btn:disabled,
+.upload-btn:disabled,
+.share-btn:disabled,
+.auth-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.action-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .file-table th {
   background: var(--surface-alt);
 }
@@ -891,8 +905,8 @@ body {
 
 .theme-toggle {
   position: fixed;
-  top: 18px;
-  right: 18px;
+  top: 22px;
+  right: 24px;
   z-index: 1400;
   display: inline-flex;
   align-items: center;
@@ -924,6 +938,10 @@ body {
 }
 
 @media (max-width: 900px) {
+  .topbar {
+    padding-right: 100px;
+  }
+
   .theme-toggle {
     top: 12px;
     right: 12px;

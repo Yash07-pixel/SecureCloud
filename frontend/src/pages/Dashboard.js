@@ -16,6 +16,11 @@ function Dashboard() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [username, setUsername] = useState('');
   const [shareExpiry, setShareExpiry] = useState('24');
+  const [uploading, setUploading] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [starringId, setStarringId] = useState(null);
   const navigate = useNavigate();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
 
@@ -50,6 +55,7 @@ function Dashboard() {
     const file = e.target.files[0];
     if (!file) return;
 
+    setUploading(true);
     setShowUploadModal(true);
     setUploadSteps(1);
     setUploadedHash('');
@@ -69,11 +75,13 @@ function Dashboard() {
       setTimeout(() => {
         setShowUploadModal(false);
         setUploadSteps(0);
+        setUploading(false);
         fetchFiles();
       }, 2000);
     } catch (err) {
       notifyError(getErrorMessage(err, 'Upload failed'));
       setShowUploadModal(false);
+      setUploading(false);
     }
   };
 
@@ -85,16 +93,20 @@ function Dashboard() {
     });
     if (!confirmed) return;
     try {
+      setDeletingId(fileId);
       await deleteFile(fileId);
       notifySuccess('File moved to trash');
       fetchFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Delete failed'));
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleDownload = async (fileId, filename) => {
     try {
+      setDownloadingId(fileId);
       const res = await downloadFile(fileId);
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
@@ -105,11 +117,14 @@ function Dashboard() {
       link.remove();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Download failed'));
+    } finally {
+      setDownloadingId(null);
     }
   };
 
   const handleShare = async () => {
     try {
+      setSharing(true);
       const payload = {
         file_id: shareFileId,
         share_with_email: shareEmail,
@@ -129,16 +144,21 @@ function Dashboard() {
       setShareExpiry('24');
     } catch (err) {
       notifyError(getErrorMessage(err, 'Share failed. Make sure the user is registered.'));
+    } finally {
+      setSharing(false);
     }
   };
 
   const handleStar = async (fileId) => {
     try {
+      setStarringId(fileId);
       await starFile(fileId);
       notifySuccess('File updated');
       fetchFiles();
     } catch (err) {
       notifyError(getErrorMessage(err, 'Star failed'));
+    } finally {
+      setStarringId(null);
     }
   };
 
@@ -162,7 +182,10 @@ function Dashboard() {
         </div>
 
         <div className="sidebar-nav">
-          <div className="nav-item" onClick={() => document.getElementById('fileInput').click()}>
+          <div
+            className={`nav-item ${uploading ? 'action-disabled' : ''}`}
+            onClick={() => !uploading && document.getElementById('fileInput').click()}
+          >
             <span className="nav-icon">UP</span> Upload File
           </div>
           <input id="fileInput" type="file" style={{ display: 'none' }} onChange={handleUpload} />
@@ -195,8 +218,12 @@ function Dashboard() {
             </div>
             <div className="greeting-sub">Manage your encrypted files, shares, and recovery actions from one place.</div>
           </div>
-          <button className="upload-btn" onClick={() => document.getElementById('fileInput').click()}>
-            Upload File
+          <button
+            className="upload-btn"
+            disabled={uploading}
+            onClick={() => !uploading && document.getElementById('fileInput').click()}
+          >
+            {uploading ? 'Uploading...' : 'Upload File'}
           </button>
         </div>
 
@@ -251,14 +278,23 @@ function Dashboard() {
                         </span>
                       </td>
                       <td>
-                        <button className="action-btn" onClick={() => handleDownload(file.id, file.original_name)}>
-                          Download
-                        </button>
-                        <button className="action-btn" onClick={() => handleStar(file.id)}>
-                          {file.starred ? 'Unstar' : 'Star'}
+                        <button
+                          className="action-btn"
+                          disabled={downloadingId === file.id}
+                          onClick={() => handleDownload(file.id, file.original_name)}
+                        >
+                          {downloadingId === file.id ? 'Downloading...' : 'Download'}
                         </button>
                         <button
                           className="action-btn"
+                          disabled={starringId === file.id}
+                          onClick={() => handleStar(file.id)}
+                        >
+                          {starringId === file.id ? 'Updating...' : file.starred ? 'Unstar' : 'Star'}
+                        </button>
+                        <button
+                          className="action-btn"
+                          disabled={sharing || deletingId === file.id}
                           onClick={() => {
                             setShareFileId(file.id);
                             setSelectedFile(file);
@@ -267,8 +303,12 @@ function Dashboard() {
                         >
                           Share
                         </button>
-                        <button className="action-btn action-btn-danger" onClick={() => handleDelete(file.id)}>
-                          Delete
+                        <button
+                          className="action-btn action-btn-danger"
+                          disabled={deletingId === file.id}
+                          onClick={() => handleDelete(file.id)}
+                        >
+                          {deletingId === file.id ? 'Deleting...' : 'Delete'}
                         </button>
                       </td>
                     </tr>
@@ -400,8 +440,8 @@ function Dashboard() {
               <button className="cancel-btn" onClick={() => setShowShareModal(false)}>
                 Cancel
               </button>
-              <button className="share-btn" onClick={handleShare}>
-                Share
+              <button className="share-btn" disabled={sharing} onClick={handleShare}>
+                {sharing ? 'Sharing...' : 'Share'}
               </button>
             </div>
           </div>
