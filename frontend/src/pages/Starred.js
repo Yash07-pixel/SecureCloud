@@ -8,6 +8,8 @@ function Starred() {
   const [files, setFiles] = useState([]);
   const [downloadingId, setDownloadingId] = useState(null);
   const [unstarringId, setUnstarringId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('name-asc');
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
@@ -74,6 +76,16 @@ function Starred() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const visibleFiles = [...files]
+    .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'name-asc') return a.original_name.localeCompare(b.original_name);
+      if (sortBy === 'name-desc') return b.original_name.localeCompare(a.original_name);
+      if (sortBy === 'size-desc') return b.size - a.size;
+      if (sortBy === 'size-asc') return a.size - b.size;
+      return 0;
+    });
+
   return (
     <div className="dashboard-container">
       <div className="sidebar">
@@ -119,12 +131,28 @@ function Starred() {
         <div className="content">
           <div className="section-heading">
             <h3 className="section-title">Your Starred Files</h3>
-            <span className="section-chip">{files.length} items</span>
+            <span className="section-chip">{visibleFiles.length} items</span>
           </div>
 
-          {files.length === 0 ? (
+          <div className="toolbar-row">
+            <input
+              className="toolbar-input"
+              type="text"
+              placeholder="Search starred files"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select className="toolbar-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="name-asc">Name A-Z</option>
+              <option value="name-desc">Name Z-A</option>
+              <option value="size-desc">Largest First</option>
+              <option value="size-asc">Smallest First</option>
+            </select>
+          </div>
+
+          {visibleFiles.length === 0 ? (
             <div className="empty empty-state">
-              <p>No starred files yet. Star a file from My Files!</p>
+              <p>{files.length === 0 ? 'No starred files yet. Star a file from My Files!' : 'No starred files match your current search.'}</p>
             </div>
           ) : (
             <div className="table-card">
@@ -138,7 +166,7 @@ function Starred() {
                   </tr>
                 </thead>
                 <tbody>
-                  {files.map((file) => (
+                  {visibleFiles.map((file) => (
                     <tr key={file.id}>
                       <td><span className="file-name-link static-file-name">{file.original_name}</span></td>
                       <td>{formatSize(file.size)}</td>

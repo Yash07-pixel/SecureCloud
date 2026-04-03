@@ -8,6 +8,8 @@ function SharedWithMe() {
   const [files, setFiles] = useState([]);
   const [downloadingId, setDownloadingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('expiry');
   const navigate = useNavigate();
   const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
@@ -96,6 +98,16 @@ function SharedWithMe() {
     return `${days}d ${hours}h remaining`;
   };
 
+  const visibleFiles = [...files]
+    .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === 'name-asc') return a.original_name.localeCompare(b.original_name);
+      if (sortBy === 'name-desc') return b.original_name.localeCompare(a.original_name);
+      if (sortBy === 'owner') return a.owner_email.localeCompare(b.owner_email);
+      if (sortBy === 'expiry') return (a.hours_remaining ?? Number.MAX_SAFE_INTEGER) - (b.hours_remaining ?? Number.MAX_SAFE_INTEGER);
+      return 0;
+    });
+
   return (
     <div className="dashboard-container">
       <div className="sidebar">
@@ -145,12 +157,28 @@ function SharedWithMe() {
 
           <div className="section-heading">
             <h3 className="section-title">Files Shared with You</h3>
-            <span className="section-chip">{files.length} items</span>
+            <span className="section-chip">{visibleFiles.length} items</span>
           </div>
 
-          {files.length === 0 ? (
+          <div className="toolbar-row">
+            <input
+              className="toolbar-input"
+              type="text"
+              placeholder="Search shared files"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select className="toolbar-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="expiry">Closest Expiry</option>
+              <option value="owner">Shared By</option>
+              <option value="name-asc">Name A-Z</option>
+              <option value="name-desc">Name Z-A</option>
+            </select>
+          </div>
+
+          {visibleFiles.length === 0 ? (
             <div className="empty empty-state">
-              <p>No files shared with you yet.</p>
+              <p>{files.length === 0 ? 'No files shared with you yet.' : 'No shared files match your current search.'}</p>
             </div>
           ) : (
             <div className="table-card">
@@ -166,7 +194,7 @@ function SharedWithMe() {
                   </tr>
                 </thead>
                 <tbody>
-                  {files.map((file) => (
+                  {visibleFiles.map((file) => (
                     <tr key={file.id}>
                       <td><span className="file-name-link static-file-name">{file.original_name}</span></td>
                       <td>{formatSize(file.size)}</td>
