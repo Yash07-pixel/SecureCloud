@@ -286,9 +286,9 @@ body {
 
 .auth-logo-image {
   display: block;
-  width: 108px;
-  height: 108px;
-  margin: 0 auto 24px;
+  width: 144px;
+  height: 144px;
+  margin: 0 auto 28px;
   object-fit: contain;
   filter: drop-shadow(0 16px 28px rgba(33, 99, 210, 0.18));
 }
@@ -345,8 +345,8 @@ body {
 }
 
 .sidebar-logo-mark {
-  width: 120px;
-  height: 72px;
+  width: 168px;
+  height: 104px;
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -1581,9 +1581,9 @@ body {
   }
 
   .auth-logo-image {
-    width: 92px;
-    height: 92px;
-    margin-bottom: 18px;
+    width: 118px;
+    height: 118px;
+    margin-bottom: 22px;
   }
 
   .auth-title-center {
