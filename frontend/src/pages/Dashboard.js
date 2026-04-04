@@ -254,7 +254,7 @@ function Dashboard() {
     <div className="dashboard-container">
       <div className="sidebar">
         <div className="sidebar-logo">
-          <img className="sidebar-logo-mark" src="/logo-mark.svg" alt="SecureCloud logo" />
+          <img className="sidebar-logo-mark" src="/securecloud-logo.svg" alt="SecureCloud logo" />
         </div>
 
         <div className="sidebar-nav">

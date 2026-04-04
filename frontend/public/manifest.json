@@ -3,17 +3,17 @@
   "name": "SecureCloud",
   "icons": [
     {
-      "src": "logo-mark.svg",
+      "src": "securecloud-logo.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     },
     {
-      "src": "logo-mark.svg",
+      "src": "securecloud-logo.svg",
       "type": "image/svg+xml",
       "sizes": "any"
     },
     {
-      "src": "logo-mark.svg",
+      "src": "securecloud-logo.svg",
       "type": "image/svg+xml",
       "sizes": "any"
     }
