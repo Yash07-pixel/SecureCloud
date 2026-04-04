@@ -293,6 +293,10 @@ body {
   filter: drop-shadow(0 16px 28px rgba(33, 99, 210, 0.18));
 }
 
+.auth-logo-spacer {
+  height: 40px;
+}
+
 .auth-brand-mark-center {
   margin: 0 auto 20px;
 }
@@ -344,11 +348,11 @@ body {
   justify-content: center;
 }
 
-.sidebar-logo-mark {
-  width: 168px;
-  height: 104px;
-  flex-shrink: 0;
-  object-fit: contain;
+.sidebar-logo-text {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--heading-theme);
 }
 
 .nav-section {
@@ -1584,6 +1588,10 @@ body {
     width: 118px;
     height: 118px;
     margin-bottom: 22px;
+  }
+
+  .auth-logo-spacer {
+    height: 24px;
   }
 
   .auth-title-center {

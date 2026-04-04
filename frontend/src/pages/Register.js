@@ -39,7 +39,7 @@ function Register() {
   return (
     <div className="auth-container">
       <div className="auth-card auth-card-single">
-        <img className="auth-logo-image" src="/securecloud-logo.svg" alt="SecureCloud logo" />
+        <div className="auth-logo-spacer" aria-hidden="true" />
         <h1 className="auth-title auth-title-center">SecureCloud</h1>
         <p className="auth-tagline auth-tagline-center">Create your account and start protecting your files.</p>
 
