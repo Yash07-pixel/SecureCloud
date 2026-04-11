@@ -10,12 +10,15 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [info, setInfo] = useState('');
+  const [registering, setRegistering] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setInfo('');
 
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -27,12 +30,25 @@ function Register() {
       return;
     }
 
+    setRegistering(true);
+    const wakeUpTimer = window.setTimeout(() => {
+      setInfo('Server is waking up. Creating your account may take a little longer.');
+    }, 2500);
+
     try {
       await registerUser({ name: trimmedName, email, password });
       setSuccess('Account created. Redirecting to login...');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Email already registered or something went wrong');
+      const status = err?.response?.status;
+      if (!status) {
+        setError('The server may still be waking up. Please wait a moment and try again.');
+      } else {
+        setError(err.response?.data?.detail || 'Email already registered or something went wrong');
+      }
+    } finally {
+      window.clearTimeout(wakeUpTimer);
+      setRegistering(false);
     }
   };
 
@@ -45,6 +61,7 @@ function Register() {
 
         {error && <p className="auth-error">{error}</p>}
         {success && <p className="auth-success">{success}</p>}
+        {info && <p className="auth-info">{info}</p>}
 
         <form className="auth-form" onSubmit={handleRegister}>
           <label className="auth-label">Full Name</label>
@@ -54,6 +71,7 @@ function Register() {
             placeholder="John Doe"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={registering}
             required
           />
 
@@ -64,6 +82,7 @@ function Register() {
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={registering}
             required
           />
 
@@ -75,12 +94,14 @@ function Register() {
               placeholder="Minimum 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={registering}
               minLength={8}
               required
             />
             <button
               className="password-toggle"
               type="button"
+              disabled={registering}
               onClick={() => setShowPassword((current) => !current)}
             >
               {showPassword ? 'Hide' : 'Show'}
@@ -89,14 +110,14 @@ function Register() {
 
           <div className="auth-helper">Use at least 8 characters to keep your account secure.</div>
 
-          <button className="auth-button" type="submit">
-            Create Account
+          <button className="auth-button" type="submit" disabled={registering}>
+            {registering ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <p className="auth-bottom">
           Already have an account?{' '}
-          <span className="auth-link" onClick={() => navigate('/login')}>
+          <span className={`auth-link ${registering ? 'auth-link-disabled' : ''}`} onClick={() => !registering && navigate('/login')}>
             Login here
           </span>
         </p>

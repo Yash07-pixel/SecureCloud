@@ -112,6 +112,17 @@ body {
   border-radius: 6px;
 }
 
+.auth-info {
+  color: var(--primary-theme);
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+  background: var(--primary-soft-theme);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--primary-theme) 24%, transparent);
+}
+
 .auth-bottom {
   color: #888;
   font-size: 13px;
@@ -127,6 +138,12 @@ body {
 
 .auth-link:hover {
   text-decoration: underline;
+}
+
+.auth-link-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  text-decoration: none !important;
 }
 
 .auth-shell {

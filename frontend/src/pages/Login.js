@@ -8,17 +8,34 @@ function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
+    setLoggingIn(true);
+
+    const wakeUpTimer = window.setTimeout(() => {
+      setInfo('Server is waking up. This can take up to a minute on Render free tier.');
+    }, 2500);
+
     try {
       const res = await loginUser({ email, password });
       localStorage.setItem('token', res.data.access_token);
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid email or password');
+      const status = err?.response?.status;
+      if (!status) {
+        setError('The server may still be waking up. Please wait a moment and try again.');
+      } else {
+        setError('Invalid email or password');
+      }
+    } finally {
+      window.clearTimeout(wakeUpTimer);
+      setLoggingIn(false);
     }
   };
 
@@ -30,17 +47,19 @@ function Login() {
         <p className="auth-tagline auth-tagline-center">Sign in to your secure workspace.</p>
 
         {error && <p className="auth-error">{error}</p>}
+        {info && <p className="auth-info">{info}</p>}
 
         <form className="auth-form" onSubmit={handleLogin}>
           <label className="auth-label">Email</label>
           <input
             className="auth-input"
             type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loggingIn}
+              required
+            />
 
           <label className="auth-label">Password</label>
           <div className="auth-input-wrap">
@@ -50,25 +69,27 @@ function Login() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loggingIn}
               required
             />
             <button
               className="password-toggle"
               type="button"
+              disabled={loggingIn}
               onClick={() => setShowPassword((current) => !current)}
             >
               {showPassword ? 'Hide' : 'Show'}
             </button>
           </div>
 
-          <button className="auth-button" type="submit">
-            Login
+          <button className="auth-button" type="submit" disabled={loggingIn}>
+            {loggingIn ? 'Connecting...' : 'Login'}
           </button>
         </form>
 
         <p className="auth-bottom">
           Don&apos;t have an account?{' '}
-          <span className="auth-link" onClick={() => navigate('/register')}>
+          <span className={`auth-link ${loggingIn ? 'auth-link-disabled' : ''}`} onClick={() => !loggingIn && navigate('/register')}>
             Register here
           </span>
         </p>
