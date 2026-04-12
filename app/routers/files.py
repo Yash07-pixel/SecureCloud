@@ -63,6 +63,9 @@ async def get_drive_access_token(user_doc: dict) -> str:
 
     try:
         token_data = await run_in_threadpool(refresh_google_access_token, refresh_token)
+    except requests.HTTPError as exc:
+        detail = exc.response.text if exc.response is not None and exc.response.text else "Could not refresh Google Drive access"
+        raise HTTPException(status_code=502, detail=detail)
     except requests.RequestException:
         raise HTTPException(status_code=502, detail="Could not refresh Google Drive access")
 
@@ -86,7 +89,8 @@ async def load_stored_payload(file_doc: dict, owner_doc: dict) -> tuple[bytes, b
         except requests.HTTPError as exc:
             if exc.response is not None and exc.response.status_code == 404:
                 raise HTTPException(status_code=404, detail="Stored file is unavailable in Google Drive")
-            raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
+            detail = exc.response.text if exc.response is not None and exc.response.text else "Could not download file from Google Drive"
+            raise HTTPException(status_code=502, detail=detail)
         except requests.RequestException:
             raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
 
@@ -135,6 +139,9 @@ async def upload_file(
                 stored_filename,
                 encrypted_payload,
             )
+        except requests.HTTPError as exc:
+            detail = exc.response.text if exc.response is not None and exc.response.text else "Could not upload encrypted file to Google Drive"
+            raise HTTPException(status_code=502, detail=detail)
         except requests.RequestException:
             raise HTTPException(status_code=502, detail="Could not upload encrypted file to Google Drive")
 
@@ -429,7 +436,8 @@ async def permanent_delete(
             await run_in_threadpool(delete_drive_file, access_token, doc["drive_file_id"])
         except requests.HTTPError as exc:
             if exc.response is None or exc.response.status_code != 404:
-                raise HTTPException(status_code=502, detail="Could not delete file from Google Drive")
+                detail = exc.response.text if exc.response is not None and exc.response.text else "Could not delete file from Google Drive"
+                raise HTTPException(status_code=502, detail=detail)
     else:
         import os
 
