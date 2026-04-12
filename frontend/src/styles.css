@@ -851,6 +851,17 @@ body {
   color: #188038;
 }
 
+.details-note {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--primary-soft-theme);
+  border: 1px solid color-mix(in srgb, var(--primary-theme) 22%, var(--border-soft));
+  color: var(--primary-theme);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .close-btn {
   width: 100%;
   padding: 10px;

@@ -125,7 +125,12 @@ function Dashboard() {
         setUploadSteps(0);
         setUploading(false);
         fetchFiles();
-        setPageStatus({ type: 'success', message: `Uploaded ${file.name} successfully.` });
+        setPageStatus({
+          type: 'success',
+          message: driveStatus.connected
+            ? `${file.name} was uploaded to Google Drive in encrypted form. Download it through SecureCloud to open it.`
+            : `Uploaded ${file.name} successfully.`,
+        });
       }, 2000);
     } catch (err) {
       const message = getErrorMessage(err, 'Upload failed');
@@ -399,7 +404,7 @@ function Dashboard() {
                 {driveLoading
                   ? 'Checking whether your Drive is connected...'
                   : driveStatus.connected
-                    ? `New uploads are being stored in Google Drive as encrypted files${driveStatus.drive_email ? ` (${driveStatus.drive_email})` : ''}.`
+                    ? `New uploads are being stored in Google Drive as encrypted files${driveStatus.drive_email ? ` (${driveStatus.drive_email})` : ''}. Download them through SecureCloud when you need the original file.`
                     : 'Connect Google Drive to store encrypted uploads in your own Drive account.'}
               </div>
             </div>
@@ -635,6 +640,12 @@ function Dashboard() {
               <div className="details-label">Storage</div>
               <div className="details-value">{getStorageLabel(selectedFile)}</div>
             </div>
+
+            {selectedFile.storage_provider === 'google_drive' && (
+              <div className="details-note">
+                The Google Drive copy is encrypted and will not open directly in Drive. Use SecureCloud download to retrieve the original file.
+              </div>
+            )}
 
             <div className="details-row">
               <div className="details-label">Uploaded</div>
