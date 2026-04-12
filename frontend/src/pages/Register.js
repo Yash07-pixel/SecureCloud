@@ -37,9 +37,11 @@ function Register() {
 
     try {
       await registerUser({ name: trimmedName, email, password });
+      setInfo('');
       setSuccess('Account created. Redirecting to login...');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
+      setInfo('');
       const status = err?.response?.status;
       if (!status) {
         setError('The server may still be waking up. Please wait a moment and try again.');
@@ -48,6 +50,7 @@ function Register() {
       }
     } finally {
       window.clearTimeout(wakeUpTimer);
+      setInfo('');
       setRegistering(false);
     }
   };

@@ -24,9 +24,11 @@ function Login() {
 
     try {
       const res = await loginUser({ email, password });
+      setInfo('');
       localStorage.setItem('token', res.data.access_token);
       navigate('/dashboard');
     } catch (err) {
+      setInfo('');
       const status = err?.response?.status;
       if (!status) {
         setError('The server may still be waking up. Please wait a moment and try again.');
@@ -35,6 +37,7 @@ function Login() {
       }
     } finally {
       window.clearTimeout(wakeUpTimer);
+      setInfo('');
       setLoggingIn(false);
     }
   };

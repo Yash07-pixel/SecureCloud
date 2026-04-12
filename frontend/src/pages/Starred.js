@@ -16,6 +16,12 @@ function Starred() {
   const { notifySuccess, notifyError, getErrorMessage } = useFeedback();
 
   useEffect(() => {
+    if (!pageStatus) return undefined;
+    const timer = window.setTimeout(() => setPageStatus(null), 20000);
+    return () => window.clearTimeout(timer);
+  }, [pageStatus]);
+
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
