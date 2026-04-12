@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { loginUser } from '../services/api';
+import { API_BASE_URL, loginUser } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles.css';
 
@@ -10,7 +10,12 @@ function Login() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
+  const googleSignInEnabled = Boolean(process.env.REACT_APP_GOOGLE_CLIENT_ID);
   const navigate = useNavigate();
+
+  const handleGoogleLogin = () => {
+    window.location.href = `${API_BASE_URL}/auth/google/login`;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -89,6 +94,17 @@ function Login() {
             {loggingIn ? 'Connecting...' : 'Login'}
           </button>
         </form>
+
+        {googleSignInEnabled && (
+          <>
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+            <button className="auth-google-button" type="button" disabled={loggingIn} onClick={handleGoogleLogin}>
+              Continue with Google
+            </button>
+          </>
+        )}
 
         <p className="auth-bottom">
           Don&apos;t have an account?{' '}

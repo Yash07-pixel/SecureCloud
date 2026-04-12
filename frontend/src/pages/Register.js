@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { registerUser } from '../services/api';
+import { API_BASE_URL, registerUser } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles.css';
 
@@ -12,7 +12,12 @@ function Register() {
   const [success, setSuccess] = useState('');
   const [info, setInfo] = useState('');
   const [registering, setRegistering] = useState(false);
+  const googleSignInEnabled = Boolean(process.env.REACT_APP_GOOGLE_CLIENT_ID);
   const navigate = useNavigate();
+
+  const handleGoogleRegister = () => {
+    window.location.href = `${API_BASE_URL}/auth/google/login`;
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -117,6 +122,17 @@ function Register() {
             {registering ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
+
+        {googleSignInEnabled && (
+          <>
+            <div className="auth-divider">
+              <span>or</span>
+            </div>
+            <button className="auth-google-button" type="button" disabled={registering} onClick={handleGoogleRegister}>
+              Continue with Google
+            </button>
+          </>
+        )}
 
         <p className="auth-bottom">
           Already have an account?{' '}

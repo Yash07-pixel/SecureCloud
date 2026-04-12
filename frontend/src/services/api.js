@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+export const API_BASE_URL = 'https://securecloud-341u.onrender.com';
+
 const API = axios.create({
-  baseURL: 'https://securecloud-341u.onrender.com'
+  baseURL: API_BASE_URL
 });
 
 // Automatically attach JWT token to every request
