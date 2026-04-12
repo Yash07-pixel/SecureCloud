@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { listFiles, uploadFile, deleteFile, shareFile, downloadFile, starFile } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { listFiles, uploadFile, deleteFile, shareFile, downloadFile, starFile, getDriveStatus, getDriveConnectUrl, disconnectDrive } from '../services/api';
+import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles.css';
 import { useFeedback } from '../context/FeedbackContext';
 
@@ -24,7 +24,12 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [pageStatus, setPageStatus] = useState(null);
+  const [driveStatus, setDriveStatus] = useState({ connected: false, drive_email: '' });
+  const [driveLoading, setDriveLoading] = useState(true);
+  const [driveRedirecting, setDriveRedirecting] = useState(false);
+  const [disconnectingDrive, setDisconnectingDrive] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notifySuccess, notifyError, confirm, getErrorMessage } = useFeedback();
 
   useEffect(() => {
@@ -32,6 +37,26 @@ function Dashboard() {
     const timer = window.setTimeout(() => setPageStatus(null), 20000);
     return () => window.clearTimeout(timer);
   }, [pageStatus]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const driveState = searchParams.get('drive');
+    const message = searchParams.get('message');
+
+    if (!driveState) return;
+
+    if (driveState === 'connected') {
+      notifySuccess('Google Drive connected. New uploads will go to your Drive as encrypted files.');
+      setPageStatus({ type: 'success', message: 'Google Drive connected. New uploads will be stored there in encrypted form.' });
+      fetchDriveStatus();
+    } else if (driveState === 'error') {
+      const errorMessage = message || 'Google Drive could not be connected.';
+      notifyError(errorMessage);
+      setPageStatus({ type: 'danger', message: errorMessage });
+    }
+
+    navigate('/dashboard', { replace: true });
+  }, [location.search, navigate, notifyError, notifySuccess]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -48,6 +73,7 @@ function Dashboard() {
       return;
     }
     fetchFiles();
+    fetchDriveStatus();
   }, [navigate]);
 
   const fetchFiles = async () => {
@@ -57,6 +83,19 @@ function Dashboard() {
       return res.data;
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchDriveStatus = async () => {
+    try {
+      const res = await getDriveStatus();
+      setDriveStatus(res.data);
+      return res.data;
+    } catch (err) {
+      console.error(err);
+      return null;
+    } finally {
+      setDriveLoading(false);
     }
   };
 
@@ -94,6 +133,43 @@ function Dashboard() {
       setPageStatus({ type: 'danger', message });
       setShowUploadModal(false);
       setUploading(false);
+    }
+  };
+
+  const handleConnectDrive = async () => {
+    try {
+      setDriveRedirecting(true);
+      const res = await getDriveConnectUrl();
+      window.location.href = res.data.auth_url;
+    } catch (err) {
+      const message = getErrorMessage(err, 'Could not start Google Drive connection');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
+      setDriveRedirecting(false);
+    }
+  };
+
+  const handleDisconnectDrive = async () => {
+    const confirmed = await confirm({
+      title: 'Disconnect Google Drive?',
+      message: 'You can only disconnect after deleting your Drive-backed files. New uploads will then go back to SecureCloud storage.',
+      confirmLabel: 'Disconnect',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      setDisconnectingDrive(true);
+      await disconnectDrive();
+      setDriveStatus({ connected: false, drive_email: '' });
+      notifySuccess('Google Drive disconnected');
+      setPageStatus({ type: 'success', message: 'Google Drive disconnected. New uploads will use SecureCloud storage.' });
+    } catch (err) {
+      const message = getErrorMessage(err, 'Could not disconnect Google Drive');
+      notifyError(message);
+      setPageStatus({ type: 'danger', message });
+    } finally {
+      setDisconnectingDrive(false);
     }
   };
 
@@ -245,6 +321,7 @@ function Dashboard() {
   };
 
   const getFileIntegrityLabel = (hash) => (hash ? 'SHA-256 verified' : 'Hash unavailable');
+  const getStorageLabel = (file) => (file.storage_provider === 'google_drive' ? 'Encrypted in Google Drive' : 'Encrypted in SecureCloud');
 
   const visibleFiles = [...files]
     .filter((file) => file.original_name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -315,6 +392,28 @@ function Dashboard() {
             and verified with <strong>&nbsp;SHA-256 integrity checks</strong>
           </div>
 
+          <div className="drive-status-card">
+            <div>
+              <div className="drive-status-title">Google Drive Storage</div>
+              <div className="drive-status-copy">
+                {driveLoading
+                  ? 'Checking whether your Drive is connected...'
+                  : driveStatus.connected
+                    ? `New uploads are being stored in Google Drive as encrypted files${driveStatus.drive_email ? ` (${driveStatus.drive_email})` : ''}.`
+                    : 'Connect Google Drive to store encrypted uploads in your own Drive account.'}
+              </div>
+            </div>
+            {driveStatus.connected ? (
+              <button className="drive-status-button drive-status-button-secondary" disabled={disconnectingDrive} onClick={handleDisconnectDrive}>
+                {disconnectingDrive ? 'Disconnecting...' : 'Disconnect Drive'}
+              </button>
+            ) : (
+              <button className="drive-status-button" disabled={driveRedirecting || driveLoading} onClick={handleConnectDrive}>
+                {driveRedirecting ? 'Redirecting...' : 'Connect Google Drive'}
+              </button>
+            )}
+          </div>
+
           {pageStatus && (
             <div className={`page-note ${pageStatus.type === 'danger' ? 'page-note-danger' : 'page-note-success'}`}>
               {pageStatus.message}
@@ -378,6 +477,7 @@ function Dashboard() {
                             <div className="file-submeta">
                               <span>{formatRelativeTime(file.uploaded_at)}</span>
                               <span>{getFilePrivacyLabel(file)}</span>
+                              <span>{file.storage_provider === 'google_drive' ? 'Drive' : 'SecureCloud'}</span>
                             </div>
                           </div>
                         </div>
@@ -470,7 +570,9 @@ function Dashboard() {
               <div className="step-icon">04</div>
               <div className="step-text">
                 <div className="step-title">Storing securely</div>
-                <div className="step-detail">Saving metadata to database</div>
+                <div className="step-detail">
+                  {driveStatus.connected ? 'Saving encrypted payload to Google Drive' : 'Saving encrypted payload to SecureCloud storage'}
+                </div>
               </div>
               {uploadSteps >= 4 ? <div className="step-status-done">Done</div> : <div className="step-status-loading">...</div>}
             </div>
@@ -496,6 +598,7 @@ function Dashboard() {
               <span className="status-pill status-pill-success">AES-256 protected</span>
               <span className="status-pill status-pill-info">{getFilePrivacyLabel(selectedFile)}</span>
               <span className="status-pill status-pill-neutral">{getFileIntegrityLabel(selectedFile.sha256_hash)}</span>
+              <span className="status-pill status-pill-neutral">{getStorageLabel(selectedFile)}</span>
             </div>
 
             <div className="details-row">
@@ -526,6 +629,11 @@ function Dashboard() {
             <div className="details-row">
               <div className="details-label">Owner</div>
               <div className="details-value">{selectedFile.owner_email}</div>
+            </div>
+
+            <div className="details-row">
+              <div className="details-label">Storage</div>
+              <div className="details-value">{getStorageLabel(selectedFile)}</div>
             </div>
 
             <div className="details-row">

@@ -1,5 +1,6 @@
 import os
 import hashlib
+import base64
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from app.core.config import settings
@@ -51,3 +52,15 @@ def load_encrypted_file(filepath: str):
     iv = raw[:16]
     encrypted_data = raw[16:]
     return encrypted_data, iv
+
+
+def encrypt_text(value: str, hex_key: str = None) -> str:
+    encrypted_data, iv = encrypt_file(value.encode("utf-8"), hex_key=hex_key)
+    return base64.b64encode(iv + encrypted_data).decode("utf-8")
+
+
+def decrypt_text(value: str, hex_key: str = None) -> str:
+    raw = base64.b64decode(value.encode("utf-8"))
+    iv = raw[:16]
+    encrypted_data = raw[16:]
+    return decrypt_file(encrypted_data, iv, hex_key=hex_key).decode("utf-8")

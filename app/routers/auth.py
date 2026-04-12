@@ -1,67 +1,32 @@
-from urllib.parse import urlencode
+from datetime import datetime, timezone
 
 import requests
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from itsdangerous import BadSignature, SignatureExpired
 from pymongo.errors import DuplicateKeyError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from app.core.config import settings
 from app.schemas.schemas import UserRegister, UserLogin, TokenResponse
 from app.core.database import users_collection
 from app.core.security import hash_password, verify_password, create_access_token
+from app.utils.encryption import encrypt_text
+from app.utils.google_oauth import (
+    GOOGLE_DRIVE_SCOPE,
+    build_google_oauth_url,
+    create_oauth_state,
+    ensure_google_auth_configured,
+    exchange_google_code_for_tokens,
+    fetch_google_userinfo,
+    get_frontend_url,
+    load_oauth_state,
+)
 from app.utils.encryption import generate_user_key
 
 limiter = Limiter(key_func=get_remote_address)
-state_serializer = URLSafeTimedSerializer(settings.SECRET_KEY, salt="google-oauth-state")
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
-
-
-def get_frontend_url(path: str, **query_params: str) -> str:
-    base_url = settings.FRONTEND_URL.rstrip("/")
-    query = urlencode({key: value for key, value in query_params.items() if value})
-    return f"{base_url}{path}?{query}" if query else f"{base_url}{path}"
-
-
-def ensure_google_auth_configured() -> None:
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google sign-in is not configured",
-        )
-
-
-def exchange_google_code_for_tokens(code: str) -> dict:
-    response = requests.post(
-        GOOGLE_TOKEN_URL,
-        data={
-            "code": code,
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "grant_type": "authorization_code",
-        },
-        timeout=15,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
-def fetch_google_userinfo(access_token: str) -> dict:
-    response = requests.get(
-        GOOGLE_USERINFO_URL,
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=15,
-    )
-    response.raise_for_status()
-    return response.json()
 
 
 @router.post("/register", status_code=201)
@@ -122,25 +87,27 @@ async def login(request: Request, credentials: UserLogin):
 @router.get("/google/login")
 @limiter.limit("10/minute")
 async def google_login(request: Request):
-    ensure_google_auth_configured()
-    state = state_serializer.dumps({"provider": "google"})
-    query = urlencode(
-        {
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            "response_type": "code",
-            "scope": "openid email profile",
-            "state": state,
-            "prompt": "select_account",
-        }
-    )
-    return RedirectResponse(url=f"{GOOGLE_AUTH_URL}?{query}", status_code=status.HTTP_302_FOUND)
+    try:
+        state = create_oauth_state({"flow": "login"})
+        auth_url = build_google_oauth_url(scopes=["openid", "email", "profile"], state=state)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured",
+        )
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
 
 @router.get("/google/callback")
 @limiter.limit("10/minute")
 async def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None):
-    ensure_google_auth_configured()
+    try:
+        ensure_google_auth_configured()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured",
+        )
 
     if error:
         return RedirectResponse(
@@ -155,7 +122,7 @@ async def google_callback(request: Request, code: str | None = None, state: str 
         )
 
     try:
-        state_serializer.loads(state, max_age=600)
+        oauth_state = load_oauth_state(state, max_age=600)
     except SignatureExpired:
         return RedirectResponse(
             url=get_frontend_url("/auth/google/callback", error="Google sign-in expired. Please try again."),
@@ -173,6 +140,54 @@ async def google_callback(request: Request, code: str | None = None, state: str 
     except requests.RequestException:
         return RedirectResponse(
             url=get_frontend_url("/auth/google/callback", error="Google sign-in failed while contacting Google."),
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    if oauth_state.get("flow") == "drive":
+        user_email = (oauth_state.get("email") or "").lower()
+        refresh_token = token_data.get("refresh_token")
+        drive_email = (userinfo.get("email") or "").lower()
+
+        if not user_email:
+            return RedirectResponse(
+                url=get_frontend_url("/dashboard", drive="error", message="Drive connection request was invalid."),
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        current_user = await users_collection.find_one({"email": user_email})
+        if not current_user:
+            return RedirectResponse(
+                url=get_frontend_url("/dashboard", drive="error", message="SecureCloud account was not found."),
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        existing_drive_info = current_user.get("google_drive", {})
+        encrypted_refresh_token = existing_drive_info.get("refresh_token")
+        if refresh_token:
+            encrypted_refresh_token = encrypt_text(refresh_token)
+
+        if not encrypted_refresh_token:
+            return RedirectResponse(
+                url=get_frontend_url("/dashboard", drive="error", message="Google Drive did not return offline access. Please try again."),
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        await users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {
+                "$set": {
+                    "google_drive": {
+                        "email": drive_email,
+                        "scope": token_data.get("scope", GOOGLE_DRIVE_SCOPE),
+                        "refresh_token": encrypted_refresh_token,
+                        "connected_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                }
+            },
+        )
+
+        return RedirectResponse(
+            url=get_frontend_url("/dashboard", drive="connected"),
             status_code=status.HTTP_302_FOUND,
         )
 

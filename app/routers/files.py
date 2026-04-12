@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from bson import ObjectId
 from bson.errors import InvalidId
+import requests
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.core.security import get_current_user
@@ -13,7 +15,14 @@ from app.utils.validation import validate_file
 from app.utils.encryption import (
     encrypt_file, decrypt_file,
     compute_sha256,
+    decrypt_text,
     save_encrypted_file, load_encrypted_file,
+)
+from app.utils.google_oauth import (
+    delete_drive_file,
+    download_drive_file,
+    refresh_google_access_token,
+    upload_drive_file,
 )
 
 limiter = Limiter(key_func=get_remote_address)
@@ -39,6 +48,63 @@ def parse_utc_datetime(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def get_drive_refresh_token(user_doc: dict) -> str | None:
+    drive_info = user_doc.get("google_drive") or {}
+    refresh_token = drive_info.get("refresh_token")
+    if not refresh_token:
+        return None
+    return decrypt_text(refresh_token)
+
+
+async def get_drive_access_token(user_doc: dict) -> str:
+    refresh_token = get_drive_refresh_token(user_doc)
+    if not refresh_token:
+        raise HTTPException(status_code=409, detail="Google Drive is not connected for this account")
+
+    try:
+        token_data = await run_in_threadpool(refresh_google_access_token, refresh_token)
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Could not refresh Google Drive access")
+
+    access_token = token_data.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=502, detail="Google Drive did not return an access token")
+    return access_token
+
+
+async def load_stored_payload(file_doc: dict, owner_doc: dict) -> tuple[bytes, bytes]:
+    storage_provider = file_doc.get("storage_provider", "local")
+
+    if storage_provider == "google_drive":
+        drive_file_id = file_doc.get("drive_file_id")
+        if not drive_file_id:
+            raise HTTPException(status_code=404, detail="Stored file reference is missing")
+
+        access_token = await get_drive_access_token(owner_doc)
+        try:
+            raw_payload = await run_in_threadpool(download_drive_file, access_token, drive_file_id)
+        except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                raise HTTPException(status_code=404, detail="Stored file is unavailable in Google Drive")
+            raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
+        except requests.RequestException:
+            raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
+
+        if len(raw_payload) < 16:
+            raise HTTPException(status_code=500, detail="Stored file payload is invalid")
+
+        return raw_payload[16:], raw_payload[:16]
+
+    storage_path = file_doc.get("storage_path")
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="Stored file path is missing")
+
+    try:
+        return load_encrypted_file(storage_path)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stored file is unavailable on the server")
+
+
 @router.post("/upload", status_code=201)
 @limiter.limit("10/minute")
 async def upload_file(
@@ -49,10 +115,33 @@ async def upload_file(
     raw_bytes = await validate_file(file)
     sha256 = compute_sha256(raw_bytes)
     user_doc = await users_collection.find_one({"email": current_user["email"]})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User account not found")
     user_key = user_doc.get("encryption_key")
     encrypted_data, iv = encrypt_file(raw_bytes, hex_key=user_key)
     stored_filename = f"{uuid.uuid4().hex}_{file.filename}"
-    filepath = save_encrypted_file(stored_filename, encrypted_data, iv)
+    encrypted_payload = iv + encrypted_data
+
+    storage_provider = "local"
+    filepath = None
+    drive_file_id = None
+
+    if get_drive_refresh_token(user_doc):
+        access_token = await get_drive_access_token(user_doc)
+        try:
+            drive_file = await run_in_threadpool(
+                upload_drive_file,
+                access_token,
+                stored_filename,
+                encrypted_payload,
+            )
+        except requests.RequestException:
+            raise HTTPException(status_code=502, detail="Could not upload encrypted file to Google Drive")
+
+        storage_provider = "google_drive"
+        drive_file_id = drive_file.get("id")
+    else:
+        filepath = save_encrypted_file(stored_filename, encrypted_data, iv)
 
     doc = {
         "filename": stored_filename,
@@ -61,6 +150,8 @@ async def upload_file(
         "size": len(raw_bytes),
         "sha256_hash": sha256,
         "storage_path": filepath,
+        "storage_provider": storage_provider,
+        "drive_file_id": drive_file_id,
         "shared_with": [],
         "share_expiry_list": [],
         "trashed": False,
@@ -90,6 +181,7 @@ async def list_files(current_user: dict = Depends(get_current_user)):
             "owner_email": doc["owner_email"],
             "size": doc["size"],
             "sha256_hash": doc["sha256_hash"],
+            "storage_provider": doc.get("storage_provider", "local"),
             "shared_with": doc.get("shared_with", []),
             "starred": doc.get("starred", False),
             "uploaded_at": doc["uploaded_at"],
@@ -129,6 +221,7 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
             "owner_email": doc["owner_email"],
             "size": doc["size"],
             "sha256_hash": doc["sha256_hash"],
+            "storage_provider": doc.get("storage_provider", "local"),
             "shared_with": doc.get("shared_with", []),
             "uploaded_at": doc["uploaded_at"],
             "is_owner": False,
@@ -154,6 +247,7 @@ async def starred_files(current_user: dict = Depends(get_current_user)):
             "owner_email": doc["owner_email"],
             "size": doc["size"],
             "sha256_hash": doc["sha256_hash"],
+            "storage_provider": doc.get("storage_provider", "local"),
             "shared_with": doc.get("shared_with", []),
             "starred": doc.get("starred", False),
             "uploaded_at": doc["uploaded_at"],
@@ -177,6 +271,7 @@ async def trashed_files(current_user: dict = Depends(get_current_user)):
             "owner_email": doc["owner_email"],
             "size": doc["size"],
             "sha256_hash": doc["sha256_hash"],
+            "storage_provider": doc.get("storage_provider", "local"),
             "uploaded_at": doc["uploaded_at"],
         })
     return files
@@ -209,8 +304,10 @@ async def download_file(
         if expiry and parse_utc_datetime(expiry) < utc_now():
             raise HTTPException(status_code=403, detail="Your access to this file has expired")
 
-    encrypted_data, iv = load_encrypted_file(doc["storage_path"])
     owner_doc = await users_collection.find_one({"email": doc["owner_email"]})
+    if not owner_doc:
+        raise HTTPException(status_code=404, detail="File owner account was not found")
+    encrypted_data, iv = await load_stored_payload(doc, owner_doc)
     owner_key = owner_doc.get("encryption_key")
     original_bytes = decrypt_file(encrypted_data, iv, hex_key=owner_key)
 
@@ -315,7 +412,6 @@ async def permanent_delete(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    import os
     object_id = parse_file_id(file_id)
     doc = await files_collection.find_one({"_id": object_id})
     if not doc:
@@ -324,8 +420,22 @@ async def permanent_delete(
     if doc["owner_email"] != current_user["email"]:
         raise HTTPException(status_code=403, detail="Only the owner can delete this file")
 
-    if os.path.exists(doc["storage_path"]):
-        os.remove(doc["storage_path"])
+    if doc.get("storage_provider") == "google_drive" and doc.get("drive_file_id"):
+        owner_doc = await users_collection.find_one({"email": doc["owner_email"]})
+        if not owner_doc:
+            raise HTTPException(status_code=404, detail="File owner account was not found")
+        access_token = await get_drive_access_token(owner_doc)
+        try:
+            await run_in_threadpool(delete_drive_file, access_token, doc["drive_file_id"])
+        except requests.HTTPError as exc:
+            if exc.response is None or exc.response.status_code != 404:
+                raise HTTPException(status_code=502, detail="Could not delete file from Google Drive")
+    else:
+        import os
+
+        storage_path = doc.get("storage_path")
+        if storage_path and os.path.exists(storage_path):
+            os.remove(storage_path)
 
     await files_collection.delete_one({"_id": object_id})
     return {"message": "File permanently deleted"}

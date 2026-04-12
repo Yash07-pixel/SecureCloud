@@ -32,6 +32,11 @@ API.interceptors.response.use(
 export const registerUser = (data) => API.post('/auth/register', data);
 export const loginUser = (data) => API.post('/auth/login', data);
 
+// Drive
+export const getDriveStatus = () => API.get('/drive/status');
+export const getDriveConnectUrl = () => API.get('/drive/connect');
+export const disconnectDrive = () => API.post('/drive/disconnect');
+
 // Files
 export const uploadFile = (formData) => API.post('/files/upload', formData);
 export const listFiles = () => API.get('/files/');
