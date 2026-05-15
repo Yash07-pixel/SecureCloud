@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    JWT_ISSUER: str = "securecloud"
+    JWT_AUDIENCE: str = "securecloud-users"
     AES_SECRET_KEY: str
     UPLOAD_DIR: str = "encrypted_files"
     GOOGLE_CLIENT_ID: str | None = None

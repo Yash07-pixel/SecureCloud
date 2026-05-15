@@ -9,6 +9,7 @@ from app.core.config import settings
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_TOKEN_REVOCATION_URL = "https://oauth2.googleapis.com/revoke"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
 GOOGLE_DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
@@ -91,6 +92,17 @@ def refresh_google_access_token(refresh_token: str) -> dict:
     )
     response.raise_for_status()
     return response.json()
+
+
+def revoke_google_token(token: str) -> None:
+    ensure_google_auth_configured()
+    response = requests.post(
+        GOOGLE_TOKEN_REVOCATION_URL,
+        data={"token": token},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=15,
+    )
+    response.raise_for_status()
 
 
 def fetch_google_userinfo(access_token: str) -> dict:

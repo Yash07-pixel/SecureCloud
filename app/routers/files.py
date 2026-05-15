@@ -1,4 +1,6 @@
 import uuid
+import logging
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
@@ -6,10 +8,9 @@ from fastapi.responses import Response
 from bson import ObjectId
 from bson.errors import InvalidId
 import requests
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from app.core.security import get_current_user
 from app.core.database import files_collection, users_collection
+from app.core.rate_limit import limiter
 from app.schemas.schemas import ShareFileRequest
 from app.utils.validation import validate_file
 from app.utils.encryption import (
@@ -25,7 +26,7 @@ from app.utils.google_oauth import (
     upload_drive_file,
 )
 
-limiter = Limiter(key_func=get_remote_address)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
@@ -48,6 +49,11 @@ def parse_utc_datetime(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def build_stored_filename(original_name: str) -> str:
+    suffix = Path(original_name or "").suffix
+    return f"{uuid.uuid4().hex}{suffix}"
+
+
 def get_drive_refresh_token(user_doc: dict) -> str | None:
     drive_info = user_doc.get("google_drive") or {}
     refresh_token = drive_info.get("refresh_token")
@@ -64,8 +70,12 @@ async def get_drive_access_token(user_doc: dict) -> str:
     try:
         token_data = await run_in_threadpool(refresh_google_access_token, refresh_token)
     except requests.HTTPError as exc:
-        detail = exc.response.text if exc.response is not None and exc.response.text else "Could not refresh Google Drive access"
-        raise HTTPException(status_code=502, detail=detail)
+        logger.warning(
+            "Google Drive token refresh failed for user %s with status %s",
+            user_doc.get("email"),
+            exc.response.status_code if exc.response is not None else "unknown",
+        )
+        raise HTTPException(status_code=502, detail="Could not refresh Google Drive access")
     except requests.RequestException:
         raise HTTPException(status_code=502, detail="Could not refresh Google Drive access")
 
@@ -78,6 +88,12 @@ async def get_drive_access_token(user_doc: dict) -> str:
 async def load_stored_payload(file_doc: dict, owner_doc: dict) -> tuple[bytes, bytes]:
     storage_provider = file_doc.get("storage_provider", "local")
 
+    if storage_provider == "google_drive_unlinked":
+        raise HTTPException(
+            status_code=409,
+            detail="This file is unavailable because its Google Drive account was disconnected.",
+        )
+
     if storage_provider == "google_drive":
         drive_file_id = file_doc.get("drive_file_id")
         if not drive_file_id:
@@ -89,8 +105,12 @@ async def load_stored_payload(file_doc: dict, owner_doc: dict) -> tuple[bytes, b
         except requests.HTTPError as exc:
             if exc.response is not None and exc.response.status_code == 404:
                 raise HTTPException(status_code=404, detail="Stored file is unavailable in Google Drive")
-            detail = exc.response.text if exc.response is not None and exc.response.text else "Could not download file from Google Drive"
-            raise HTTPException(status_code=502, detail=detail)
+            logger.warning(
+                "Google Drive download failed for file %s with status %s",
+                file_doc.get("_id"),
+                exc.response.status_code if exc.response is not None else "unknown",
+            )
+            raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
         except requests.RequestException:
             raise HTTPException(status_code=502, detail="Could not download file from Google Drive")
 
@@ -123,7 +143,7 @@ async def upload_file(
         raise HTTPException(status_code=404, detail="User account not found")
     user_key = user_doc.get("encryption_key")
     encrypted_data, iv = encrypt_file(raw_bytes, hex_key=user_key)
-    stored_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    stored_filename = build_stored_filename(file.filename)
     encrypted_payload = iv + encrypted_data
 
     storage_provider = "local"
@@ -140,8 +160,13 @@ async def upload_file(
                 encrypted_payload,
             )
         except requests.HTTPError as exc:
-            detail = exc.response.text if exc.response is not None and exc.response.text else "Could not upload encrypted file to Google Drive"
-            raise HTTPException(status_code=502, detail=detail)
+            logger.warning(
+                "Google Drive upload failed for user %s and file %s with status %s",
+                current_user["email"],
+                stored_filename,
+                exc.response.status_code if exc.response is not None else "unknown",
+            )
+            raise HTTPException(status_code=502, detail="Could not upload encrypted file to Google Drive")
         except requests.RequestException:
             raise HTTPException(status_code=502, detail="Could not upload encrypted file to Google Drive")
 
@@ -219,7 +244,7 @@ async def shared_with_me(current_user: dict = Depends(get_current_user)):
 
         hours_remaining = None
         if expiry:
-            diff = parse_utc_datetime(expiry) - utc_now()
+            diff = parse_utc_datetime(expiry) - now
             hours_remaining = max(0, int(diff.total_seconds() / 3600))
 
         files.append({
@@ -292,6 +317,8 @@ async def download_file(
     object_id = parse_file_id(file_id)
     doc = await files_collection.find_one({"_id": object_id})
     if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    if doc.get("trashed"):
         raise HTTPException(status_code=404, detail="File not found")
 
     email = current_user["email"]
@@ -436,8 +463,12 @@ async def permanent_delete(
             await run_in_threadpool(delete_drive_file, access_token, doc["drive_file_id"])
         except requests.HTTPError as exc:
             if exc.response is None or exc.response.status_code != 404:
-                detail = exc.response.text if exc.response is not None and exc.response.text else "Could not delete file from Google Drive"
-                raise HTTPException(status_code=502, detail=detail)
+                logger.warning(
+                    "Google Drive delete failed for file %s with status %s",
+                    doc.get("_id"),
+                    exc.response.status_code if exc.response is not None else "unknown",
+                )
+                raise HTTPException(status_code=502, detail="Could not delete file from Google Drive")
     else:
         import os
 

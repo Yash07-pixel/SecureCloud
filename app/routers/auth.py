@@ -1,16 +1,22 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired
 from pymongo.errors import DuplicateKeyError
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from app.schemas.schemas import UserRegister, UserLogin, TokenResponse
-from app.core.database import users_collection
-from app.core.security import hash_password, verify_password, create_access_token
+from app.schemas.schemas import RefreshTokenRequest, UserRegister, UserLogin, TokenResponse
+from app.core.database import token_sessions_collection, users_collection
+from app.core.rate_limit import limiter
+from app.core.security import (
+    REFRESH_TOKEN_TYPE,
+    create_token_pair,
+    decode_token,
+    hash_password,
+    hash_token,
+    verify_password,
+)
 from app.utils.encryption import encrypt_text
 from app.utils.google_oauth import (
     GOOGLE_DRIVE_SCOPE,
@@ -24,9 +30,42 @@ from app.utils.google_oauth import (
 )
 from app.utils.encryption import generate_user_key
 
-limiter = Limiter(key_func=get_remote_address)
-
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+MAX_FAILED_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_MINUTES = 15
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def normalize_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+async def issue_tokens_for_user(user: dict) -> dict:
+    token_pair = create_token_pair({"sub": user["email"], "name": user["name"]})
+    await token_sessions_collection.insert_one(
+        {
+            "jti": token_pair["refresh_jti"],
+            "user_email": user["email"],
+            "token_hash": hash_token(token_pair["refresh_token"]),
+            "created_at": utc_now(),
+            "expires_at": token_pair["refresh_expires_at"],
+            "revoked_at": None,
+            "replaced_by_jti": None,
+        }
+    )
+    return {
+        "access_token": token_pair["access_token"],
+        "refresh_token": token_pair["refresh_token"],
+        "token_type": "bearer",
+    }
 
 
 @router.post("/register", status_code=201)
@@ -45,7 +84,6 @@ async def register(request: Request, user: UserRegister):
         "name": user.name,
         "email": email,
         "password": hashed_pw,
-        "is_verified": True,
         "encryption_key": user_key,
     }
 
@@ -68,6 +106,15 @@ async def login(request: Request, credentials: UserLogin):
             detail="Incorrect email or password"
         )
 
+    now = utc_now()
+    lockout_until = normalize_utc(user.get("lockout_until"))
+    if lockout_until and lockout_until > now:
+        remaining_minutes = max(1, int((lockout_until - now).total_seconds() / 60))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed login attempts. Try again in {remaining_minutes} minute(s).",
+        )
+
     if not user.get("password"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -75,13 +122,32 @@ async def login(request: Request, credentials: UserLogin):
         )
 
     if not verify_password(credentials.password, user["password"]):
+        current_failed_attempts = int(user.get("failed_login_attempts", 0))
+        if lockout_until and lockout_until <= now:
+            current_failed_attempts = 0
+
+        failed_attempts = current_failed_attempts + 1
+        update_fields = {"failed_login_attempts": failed_attempts}
+        if failed_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+            update_fields["lockout_until"] = now + timedelta(minutes=LOGIN_LOCKOUT_MINUTES)
+        await users_collection.update_one({"_id": user["_id"]}, {"$set": update_fields})
+
+        if failed_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many failed login attempts. Try again in {LOGIN_LOCKOUT_MINUTES} minute(s).",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
 
-    token = create_access_token(data={"sub": user["email"], "name": user["name"]})
-    return {"access_token": token, "token_type": "bearer"}
+    await users_collection.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"failed_login_attempts": 0}, "$unset": {"lockout_until": ""}},
+    )
+
+    return await issue_tokens_for_user(user)
 
 
 @router.get("/google/login")
@@ -160,6 +226,15 @@ async def google_callback(request: Request, code: str | None = None, state: str 
                 url=get_frontend_url("/dashboard", drive="error", message="SecureCloud account was not found."),
                 status_code=status.HTTP_302_FOUND,
             )
+        if drive_email != user_email:
+            return RedirectResponse(
+                url=get_frontend_url(
+                    "/dashboard",
+                    drive="error",
+                    message="Google Drive account email must match your SecureCloud account email.",
+                ),
+                status_code=status.HTTP_302_FOUND,
+            )
 
         existing_drive_info = current_user.get("google_drive", {})
         encrypted_refresh_token = existing_drive_info.get("refresh_token")
@@ -223,7 +298,6 @@ async def google_callback(request: Request, code: str | None = None, state: str 
             "name": name,
             "email": email,
             "password": None,
-            "is_verified": True,
             "encryption_key": generate_user_key(),
             "auth_provider": "google",
             "google_sub": google_sub,
@@ -236,8 +310,64 @@ async def google_callback(request: Request, code: str | None = None, state: str 
                 status_code=status.HTTP_302_FOUND,
             )
 
-    token = create_access_token(data={"sub": email, "name": user_record["name"]})
+    token_pair = await issue_tokens_for_user(user_record)
     return RedirectResponse(
-        url=get_frontend_url("/auth/google/callback", token=token),
+        url=get_frontend_url(
+            "/auth/google/callback",
+            token=token_pair["access_token"],
+            refresh_token=token_pair["refresh_token"],
+        ),
         status_code=status.HTTP_302_FOUND,
     )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_access_token(payload: RefreshTokenRequest):
+    token_payload = decode_token(payload.refresh_token, expected_type=REFRESH_TOKEN_TYPE)
+    session = await token_sessions_collection.find_one({"jti": token_payload["jti"]})
+    if not session or session.get("revoked_at"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token is invalid")
+
+    if session.get("token_hash") != hash_token(payload.refresh_token):
+        await token_sessions_collection.update_one(
+            {"_id": session["_id"]},
+            {"$set": {"revoked_at": utc_now()}},
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token is invalid")
+
+    user = await users_collection.find_one({"email": token_payload.get("sub")})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    new_token_pair = create_token_pair({"sub": user["email"], "name": user["name"]})
+    now = utc_now()
+    await token_sessions_collection.update_one(
+        {"_id": session["_id"]},
+        {"$set": {"revoked_at": now, "replaced_by_jti": new_token_pair["refresh_jti"]}},
+    )
+    await token_sessions_collection.insert_one(
+        {
+            "jti": new_token_pair["refresh_jti"],
+            "user_email": user["email"],
+            "token_hash": hash_token(new_token_pair["refresh_token"]),
+            "created_at": now,
+            "expires_at": new_token_pair["refresh_expires_at"],
+            "revoked_at": None,
+            "replaced_by_jti": None,
+        }
+    )
+    return {
+        "access_token": new_token_pair["access_token"],
+        "refresh_token": new_token_pair["refresh_token"],
+        "token_type": "bearer",
+    }
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(payload: RefreshTokenRequest):
+    token_payload = decode_token(payload.refresh_token, expected_type=REFRESH_TOKEN_TYPE, verify_exp=False)
+    await token_sessions_collection.update_one(
+        {"jti": token_payload["jti"]},
+        {"$set": {"revoked_at": utc_now()}},
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

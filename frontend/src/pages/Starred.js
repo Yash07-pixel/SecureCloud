@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getStarredFiles, downloadFile, starFile } from '../services/api';
+import { clearStoredAuth, downloadFile, getStarredFiles, logoutUser, starFile } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles.css';
 import { useFeedback } from '../context/FeedbackContext';
@@ -30,7 +30,7 @@ function Starred() {
     try {
       JSON.parse(atob(token.split('.')[1]));
     } catch (err) {
-      localStorage.removeItem('token');
+      clearStoredAuth();
       navigate('/login');
       return;
     }
@@ -127,8 +127,13 @@ function Starred() {
         <div className="sidebar-footer">
           <div
             className="nav-item"
-            onClick={() => {
-              localStorage.removeItem('token');
+            onClick={async () => {
+              try {
+                await logoutUser();
+              } catch (err) {
+                console.error(err);
+              }
+              clearStoredAuth();
               navigate('/login');
             }}
           >

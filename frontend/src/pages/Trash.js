@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTrashFiles, restoreFile, permanentDelete } from '../services/api';
+import { clearStoredAuth, getTrashFiles, logoutUser, permanentDelete, restoreFile } from '../services/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles.css';
 import { useFeedback } from '../context/FeedbackContext';
@@ -30,7 +30,7 @@ function Trash() {
     try {
       JSON.parse(atob(token.split('.')[1]));
     } catch (err) {
-      localStorage.removeItem('token');
+      clearStoredAuth();
       navigate('/login');
       return;
     }
@@ -129,8 +129,13 @@ function Trash() {
         <div className="sidebar-footer">
           <div
             className="nav-item"
-            onClick={() => {
-              localStorage.removeItem('token');
+            onClick={async () => {
+              try {
+                await logoutUser();
+              } catch (err) {
+                console.error(err);
+              }
+              clearStoredAuth();
               navigate('/login');
             }}
           >

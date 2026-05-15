@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFeedback } from '../context/FeedbackContext';
+import { storeAuthTokens } from '../services/api';
 import '../styles.css';
 
 function GoogleAuthCallback() {
@@ -10,10 +11,11 @@ function GoogleAuthCallback() {
 
   useEffect(() => {
     const token = searchParams.get('token');
+    const refreshToken = searchParams.get('refresh_token');
     const error = searchParams.get('error');
 
     if (token) {
-      localStorage.setItem('token', token);
+      storeAuthTokens({ access_token: token, refresh_token: refreshToken });
       navigate('/dashboard', { replace: true });
       return;
     }

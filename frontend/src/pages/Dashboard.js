@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { listFiles, uploadFile, deleteFile, shareFile, downloadFile, starFile, getDriveStatus, getDriveConnectUrl, disconnectDrive } from '../services/api';
+import { clearStoredAuth, disconnectDrive, downloadFile, getDriveConnectUrl, getDriveStatus, listFiles, logoutUser, shareFile, starFile, uploadFile, deleteFile } from '../services/api';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles.css';
 import { useFeedback } from '../context/FeedbackContext';
@@ -68,7 +68,7 @@ function Dashboard() {
       const payload = JSON.parse(atob(token.split('.')[1]));
       setUsername(payload.name || payload.sub.split('@')[0]);
     } catch (err) {
-      localStorage.removeItem('token');
+      clearStoredAuth();
       navigate('/login');
       return;
     }
@@ -267,8 +267,13 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error(err);
+    }
+    clearStoredAuth();
     navigate('/login');
   };
 

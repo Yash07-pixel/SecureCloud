@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSharedFiles, downloadFile, removeSharedFile } from '../services/api';
+import { clearStoredAuth, downloadFile, getSharedFiles, logoutUser, removeSharedFile } from '../services/api';
 import '../styles.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useFeedback } from '../context/FeedbackContext';
@@ -30,7 +30,7 @@ function SharedWithMe() {
     try {
       JSON.parse(atob(token.split('.')[1]));
     } catch (err) {
-      localStorage.removeItem('token');
+      clearStoredAuth();
       navigate('/login');
       return;
     }
@@ -149,8 +149,13 @@ function SharedWithMe() {
         <div className="sidebar-footer">
           <div
             className="nav-item"
-            onClick={() => {
-              localStorage.removeItem('token');
+            onClick={async () => {
+              try {
+                await logoutUser();
+              } catch (err) {
+                console.error(err);
+              }
+              clearStoredAuth();
               navigate('/login');
             }}
           >

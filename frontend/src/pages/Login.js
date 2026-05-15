@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API_BASE_URL, loginUser } from '../services/api';
+import { API_BASE_URL, loginUser, storeAuthTokens } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import '../styles.css';
 
@@ -30,7 +30,7 @@ function Login() {
     try {
       const res = await loginUser({ email, password });
       setInfo('');
-      localStorage.setItem('token', res.data.access_token);
+      storeAuthTokens(res.data);
       navigate('/dashboard');
     } catch (err) {
       setInfo('');
